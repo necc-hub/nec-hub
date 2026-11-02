@@ -17,6 +17,8 @@ let currentSid = SID;
 
 function api(pathname: string, method = "GET", body?: unknown): Promise<Response | null> {
   const ctx = currentCtx();
+  // 生产路由只传 url.pathname（不含 query），测试保持一致
+  const pathOnly = pathname.split("?")[0];
   return handleDrawingReview(
     new Request(`http://localhost${pathname}`, {
       method,
@@ -24,7 +26,7 @@ function api(pathname: string, method = "GET", body?: unknown): Promise<Response
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
     ctx.env,
-    pathname,
+    pathOnly,
   );
 }
 
@@ -189,5 +191,31 @@ describe("图纸评审全链路 e2e", () => {
     expect(gen.status).toBe(200);
     expect(gen.data.created).toHaveLength(1);
     expect(gen.data.created[0].materialCode).toBe("M-100");
+  });
+
+  it("/start 与 /suggestions 不被详情路由吞掉；/start 按项目+机型自动递增版本", async () => {
+    const submit = await apiJson("/api/drawing-review/submit", "POST", {
+      projectId: "PRJ-E2E",
+      machineName: "E2E 测试机型",
+      drawingVersion: "V1.0",
+      drawingFiles: [{ name: "drawing.pdf", token: "tok" }],
+      designNotes: "路由回归",
+    });
+    expect(submit.status).toBe(200);
+
+    // /start 不再被当作评审单号进入详情路由
+    const start = await apiJson("/api/drawing-review/start");
+    expect(start.status).toBe(200);
+    expect(start.data.ok).toBe(true);
+
+    // 同项目+机型 → 下一版本 V1.1
+    const next = await apiJson(`/api/drawing-review/start?projectId=PRJ-E2E&machineName=${encodeURIComponent("E2E 测试机型")}`);
+    expect(next.status).toBe(200);
+    expect(next.data.defaults.drawingVersion).toBe("V1.1");
+
+    // /suggestions 返回联想结构而非 404「评审单不存在」
+    const sug = await apiJson(`/api/drawing-review/suggestions?q=${encodeURIComponent("E2E")}&type=machine`);
+    expect(sug.status).toBe(200);
+    expect(sug.data.ok).toBe(true);
   });
 });

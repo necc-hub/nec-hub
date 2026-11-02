@@ -71,6 +71,7 @@ function handleInput(type: 'project' | 'machine') {
     return
   }
   suggestionTimeout = setTimeout(() => fetchSuggestions(query, type), 300)
+  scheduleVersionFetch()
 }
 
 function showSuggestionsOnFocus(type: 'project' | 'machine') {
@@ -102,6 +103,7 @@ function selectSuggestion(type: 'project' | 'machine', value: string) {
     form.machineName = value
     suggestOpen.machine = false
   }
+  scheduleVersionFetch()
 }
 
 // 点击外部隐藏联想
@@ -122,6 +124,31 @@ async function loadDefaults() {
     if (!form.designNotes && d.designNotes) form.designNotes = d.designNotes
   } catch { /* 默认值加载失败静默 */ }
 }
+
+// ---- 字段联动：项目+机型确定后自动算下一版本号（用户手改过则不覆盖） ----
+const versionTouched = ref(false)
+const versionAutoHint = ref('')
+let versionTimeout: ReturnType<typeof setTimeout> | undefined
+
+function scheduleVersionFetch() {
+  clearTimeout(versionTimeout)
+  versionTimeout = setTimeout(fetchNextVersion, 500)
+}
+
+async function fetchNextVersion() {
+  if (!form.projectId.trim() || !form.machineName.trim()) return
+  try {
+    const data = await apiDr(`/start?projectId=${encodeURIComponent(form.projectId.trim())}&machineName=${encodeURIComponent(form.machineName.trim())}`)
+    const v = data.defaults?.drawingVersion
+    if (v && !versionTouched.value) {
+      form.drawingVersion = v
+      versionAutoHint.value = `已按该项目+机型的历史评审自动定为 ${v}`
+    }
+  } catch { /* 版本联动失败静默，可手填 */ }
+}
+
+// ---- 设计负责人：默认当前登录人自动带入；代他人提交时展开 open_id 输入 ----
+const delegateMode = ref(false)
 
 onMounted(() => {
   document.addEventListener('click', onDocClick)
@@ -160,6 +187,10 @@ async function onSubmit() {
     result.value = { ok: true, text: `提交成功：${data.reviewId}` }
     Object.keys(form).forEach(k => { (form as Record<string, string>)[k] = '' })
     uploadedFiles.value = []
+    versionTouched.value = false
+    versionAutoHint.value = ''
+    delegateMode.value = false
+    if (auth.me.user) form.designerId = auth.me.user.open_id
     emit('submitted')
   } catch (err) {
     result.value = { ok: false, text: '失败：' + (err as Error).message }
@@ -204,12 +235,24 @@ async function onSubmit() {
           </div>
           <div>
             <label class="block text-sm font-medium text-nec-navy mb-1">图纸版本</label>
-            <input type="text" name="drawingVersion" v-model="form.drawingVersion" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="V1.0" />
+            <input type="text" name="drawingVersion" v-model="form.drawingVersion" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="V1.0"
+                   @input="versionTouched = true; versionAutoHint = ''" />
+            <p v-if="versionAutoHint" class="text-xs text-nec-cyan mt-1">{{ versionAutoHint }}</p>
           </div>
           <div>
-            <label class="block text-sm font-medium text-nec-navy mb-1">设计负责人 open_id</label>
-            <input type="text" name="designerId" v-model="form.designerId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="ou_xxx" />
-            <p v-if="auth.me.user && form.designerId === auth.me.user.open_id" class="text-xs text-nec-gray mt-1">当前登录：{{ auth.me.user.name }}</p>
+            <label class="block text-sm font-medium text-nec-navy mb-1">设计负责人</label>
+            <template v-if="!delegateMode">
+              <div class="w-full rounded-lg border border-nec-line bg-nec-paper px-3 py-2 text-sm text-nec-ink">
+                {{ auth.me.user?.name || '当前登录人' }}
+                <span class="text-xs text-nec-gray">（自动带入，无需填写 open_id）</span>
+              </div>
+              <p class="text-xs mt-1"><a href="javascript:void(0)" class="link" @click="delegateMode = true">为他人代提交 →</a></p>
+            </template>
+            <template v-else>
+              <input type="text" name="designerId" v-model="form.designerId" required class="mono w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="ou_xxx（代提交人的 open_id）" />
+              <p v-if="auth.me.user && form.designerId === auth.me.user.open_id" class="text-xs text-nec-gray mt-1">当前登录：{{ auth.me.user.name }}</p>
+              <p class="text-xs mt-1"><a href="javascript:void(0)" class="link" @click="delegateMode = false; if (auth.me.user) form.designerId = auth.me.user.open_id">← 改回我自己</a></p>
+            </template>
           </div>
         </div>
         <div>

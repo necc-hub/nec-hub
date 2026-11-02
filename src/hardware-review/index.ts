@@ -108,9 +108,17 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
     return json(list);
   }
 
-  // 开始填写（默认填充值，供前端预填表单）
+  // 开始填写（默认填充值，供前端预填表单）：支持 projectId/hardwareName 查询参数触发版本自动递增
   if (pathname === "/api/hardware-review/start" && request.method === "GET") {
-    const defaults = await flow.getDefaultSubmissionValues({ hardwareFiles: [] }, session.open_id);
+    const url = new URL(request.url);
+    const defaults = await flow.getDefaultSubmissionValues(
+      {
+        projectId: url.searchParams.get("projectId") || undefined,
+        hardwareName: url.searchParams.get("hardwareName") || undefined,
+        hardwareFiles: [],
+      },
+      session.open_id,
+    );
     return json({ ok: true, defaults, timestamp: new Date().toISOString() });
   }
 

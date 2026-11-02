@@ -178,7 +178,8 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
   }
 
   const detailMatch = pathname.match(/^\/api\/drawing-review\/([^/]+)$/);
-  if (detailMatch && request.method === "GET") {
+  // 注意：/start、/suggestions 等字面量路由必须在本泛型匹配之前注册，否则会被当作评审单号
+  if (detailMatch && request.method === "GET" && detailMatch[1] !== "start" && detailMatch[1] !== "suggestions") {
     const review = await flow.getReview(detailMatch[1]);
     if (!review) return json({ error: "评审单不存在" }, 404);
     return json(review);
@@ -311,9 +312,17 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     return json(items);
   }
 
-  // 开始填写（方便填写）
+  // 开始填写（方便填写）：支持 projectId/machineName 查询参数——命中历史评审单时版本号自动递增
   if (pathname === "/api/drawing-review/start" && request.method === "GET") {
-    const defaults = await flow.getDefaultSubmissionValues({ drawingFiles: [] }, session.open_id);
+    const url = new URL(request.url);
+    const defaults = await flow.getDefaultSubmissionValues(
+      {
+        projectId: url.searchParams.get("projectId") || undefined,
+        machineName: url.searchParams.get("machineName") || undefined,
+        drawingFiles: [],
+      },
+      session.open_id,
+    );
     return json({
       ok: true,
       defaults,
