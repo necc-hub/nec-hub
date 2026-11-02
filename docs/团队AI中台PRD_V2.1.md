@@ -34,6 +34,7 @@
 | FE-12 Skill CI | ✅ | 已确认满足：`quality-check.yml` 强制校验 SKILL.md + PR 自动评论质量报告 |
 | FE-13 lark-cli 调研 | ✅ | 《lark-cli能力边界验证报告》已归档；结论：多维表格读写全自动化、应用版本发布可走 api 逃生舱（未实测）、定制工作台无 OpenAPI |
 | FE-14 图纸评审流程 | ✅ | 10 张逻辑表配齐 + 询价比价 + 流程看板（阻塞预警/甘特图）+ 群通知 + 阻塞告警 cron 已上线；审批侧五组端到端实测通过（V1.1 F-01）；**2026-10-15 增补**：库存手动导入兜底（`inventory.service.ts`，§13.7 验收 2，幂等可重复导入）、§11 待确认问题转决策跟踪表（7 项均附建议方案）、《灰度执行手册》归档；持续迭代（联想/BOM/6014 专项页） |
+| FE-19 域名分发系统 | 🔄 | 自助三级/四级域名申请（保留名/限额/防回环校验）+ 泛域名 R2 应用直达（deploy_app 零配置）+ 门户 `/apps/domains/` 页 + 使用手册已上线并注册应用广场（2026-10-15）；**待配置**：`*` 泛 DNS 记录 + `CF_API_TOKEN`/`CF_ZONE_ID` secrets，配好后全链路实测一单 |
 
 ---
 
@@ -551,6 +552,28 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 **进展（2026-10-14 深夜，已上线）**：见 FE-04 尾段进展记录；18 条 vitest 用例全绿。待办：与看板 goals 区块及 `update_progress` 的数据流打通验证、真实目标数据收集。
 
+### FE-19 域名分发系统（P1）——成员自助三级/四级域名 + 泛域名应用直达
+
+**用户故事**：作为队员，我开发了自己的应用，希望不用找管理员就能拿到 `xxx.newenergycoder.club` 域名，指向我部署在 R2 / Vercel / Pages / 自建服务器上的项目。
+
+**需求描述**：
+
+- **自助申请**：飞书登录后在 `/apps/domains/` 申请三级域名（CNAME / A / AAAA，支持四级如 `my-app.dev.newenergycoder.club`，最多 3 级标签）；每人限 3 个（vars `DOMAIN_MAX_PER_USER`），队长/指导/管理员不受限并可释放任意记录。
+- **防抢注**：首标签按全量保留表校验（hub/www/api/docs 等 40+），深级标签拦高危词（hub/login/auth/admin/pay/sso）；CNAME 目标禁止指向根域自身（防回环）；重复申请返回 409。
+- **泛域名应用直达**：`*.newenergycoder.club/*` 路由 + Host 识别（`src/domains/wildcard.ts`），`deploy_app` 上架 R2 应用后零 DNS 配置即刻可访问；已登记外部目标与保留名透传回源不劫持。
+- **Cloudflare 自动落 DNS**：secrets `CF_API_TOKEN` + `CF_ZONE_ID` 驱动记录创建/删除；未配置时申请存 pending，配置后「重试同步」补建，系统不锁死。
+- **HTTPS 边界**：Universal SSL 只覆盖三级泛域名；四级及更深强制仅 DNS，证书由目标平台签发（申请时自动关闭代理并提示）。
+- **公开目录**：`GET /api/domains` 返回 active 记录（脱敏，无 open_id）。
+
+**验收标准**：
+
+1. 队员申请 CNAME 域名后，Cloudflare DNS 出现对应记录，`dig` 可解析；释放后记录同步删除。
+2. 保留名/超限/重复/非法目标分别返回 400/429/409/400；非本人删除返回 403。
+3. R2 已部署应用经 `https://<name>.newenergycoder.club` 直接可访问；已登记外部 CNAME 的子域名不被泛路由劫持。
+4. 四级域名申请强制 proxied=false 且响应 hint 含证书提示。
+
+**进展（2026-10-15 代码上线，待配置）**：模块 `src/domains/`（types/cloudflare/service/index/wildcard）+ 门户应用页 `public/apps/domains/` + 使用手册已归档并注册进应用广场；`src/index.ts` 挂载 `/api/domains/*` 与泛路由，cron 收敛 4→3 规避免费版 5 触发器上限；vitest 全量 310 用例全绿（含域名分发与泛路由用例）。**待办**：① Cloudflare DNS 手动加 `*` 泛解析记录（AAAA → `100::`，橙云）；② `wrangler secret put CF_API_TOKEN / CF_ZONE_ID`；③ 全链路实测一单；④ 优化 backlog：KV 索引改 per-subdomain key 消并发写竞态、申请/释放推飞书群、MCP `apply_domain` 工具、域名到期回收与 DNS 对账 cron。
+
 ## 6. 非功能需求
 
 | 类别 | 要求 |
@@ -632,6 +655,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | V2.0 修订 | 2026-10-14 三更 | **N-02 飞书邮箱通道 + 全量部署**：`src/feishu/mail.ts`（RFC 5822 EML 构造/建草稿/发送/profile 取发件地址，refresh_token 持久化续期）+ `send_mail` MCP 工具（第 20 个）+ 登录 scope 追加 `mail:user_mailbox.message:modify`；姓名→open_id 目录抽至共享模块 `feishu/member-directory`（meeting/mail 共用）；vitest 20 文件 200 用例全绿；全量部署生产；《主线整合与执行方案_V1.0》归档 docs/ |
 | V2.0 修订 | 2026-10-15 | §0 全面刷新（对齐代码现状与各 FE 进展：FE-03/04/05/06/07/10/12/13/14 升 ✅，FE-08/09 刷新为审批 PRD V1.1/V1.2 口径）；§4 现状盘点修订（域拆分架构、灌数进展、缺口清单更新） |
 | V2.1 | 2026-10-16 | **累积修订固化升版**（文件同步更名 `团队AI中台PRD_V2.1.md`）：FE-06 首页工作台升级（评审 12 项全落地，`e319e41`）；FE-16 合同审批可用性重构（评审 13 项落地 12，`72790bb`）；任务排期白底主题 + Git 式流线图（`3bc9df7`）；FE-08 报销台账 manage 接口 + 45 张采购发票 R-01 批次（`a072491`/`a9d2d1b`）；FE-01 登录体验优化（无感重登/auth.phase/AuthToast/OAuth 保现场，`2d8b153`）；Cron 时间窗调度重构 + guard 去重、快触发器 */8、看板 TTL 1800s（`90241f1`/`1b9d053`）；新增团队周报自动化 `src/reports/weekly.ts`（周一 08:16 UTC+8 快照 diff 推群 + 手动补发端点）；《NEC-HUB 模块优化评估报告 V1.0》归档；vitest 33 文件 409 用例全绿 |
+| V2.1 修订 | 2026-11-03 | 新增 FE-19 域名分发系统（§0 状态行 + §5 完整需求/验收 + §13.2 Secrets 增补）：成员自助三级/四级域名申请、泛域名 R2 应用直达（deploy_app 零配置域名）、Cloudflare DNS 自动同步（pending/retry 兜底）；代码已于 2026-10-15 上线，待 `*` 泛 DNS 记录与 CF secrets 配置后实测 |
 
 ### 11.2 变更流程
 
@@ -683,6 +707,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | `GITHUB_TOKEN` | `/api/repos` GitHub org 拉取 |
 | `GITEE_TOKEN` | Gitee 仓库/Skill 同步 |
 | `VERCEL_TOKEN` | `sync_vercel` 项目发现与登记 |
+| `CF_API_TOKEN` / `CF_ZONE_ID` | FE-19 域名分发：Cloudflare DNS 记录自动创建/删除（Token 权限 Zone.DNS Edit，限定 newenergycoder.club；未配置时申请存 pending，配置后重试同步） |
 
 密钥只存 wrangler secrets，不进仓库（§6）；交接时按交接 README 清单逐项移交。
 
