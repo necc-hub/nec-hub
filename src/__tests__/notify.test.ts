@@ -3,7 +3,7 @@
  * 加签向量、未配置降级、消息体形状与按流程分流、失败重试后写 notify:failed
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { feishuBotSign, notifyFeishu } from "../feishu/bot";
+import { atMentions, buildApprovalCard, feishuBotSign, notifyFeishu } from "../feishu/bot";
 import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv } from "./mock-env";
 
@@ -124,6 +124,121 @@ describe("notifyFeishu", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
       const putMock = (env as unknown as ReturnType<typeof createMockEnv>).REGISTRY.put;
       expect(putMock.mock.calls.some((c) => c[0] === KV_KEYS.notifyFailed)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+describe("审批卡片通知（PRD_审批通知卡片化）", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("atMentions：仅保留合法 open_id，空/非法值静默过滤", () => {
+    expect(atMentions(["ou_abc123", "", "bad-id", "ou_X9y", "  "])).toBe("<at user_id=ou_abc123></at> <at user_id=ou_X9y></at>");
+    expect(atMentions(undefined)).toBe("");
+    expect(atMentions([])).toBe("");
+  });
+
+  it("buildApprovalCard：JSON 2.0 结构、标题着色、@ 人与 open_url 按钮", () => {
+    const card = buildApprovalCard({
+      title: "📋 新图纸评审 DR-2026-0001",
+      content: "申请人：张三",
+      link: "https://link",
+      atOpenIds: ["ou_abc"],
+      template: "green",
+    }) as {
+      schema: string;
+      header: { title: { content: string }; template: string };
+      body: { elements: Array<{ tag: string; content?: string; behaviors?: Array<{ type: string; url: string }> }> };
+    };
+    expect(card.schema).toBe("2.0");
+    expect(card.header.title.content).toBe("📋 新图纸评审 DR-2026-0001");
+    expect(card.header.template).toBe("green");
+    const md = card.body.elements[0];
+    expect(md.tag).toBe("markdown");
+    expect(md.content).toContain("申请人：张三");
+    expect(md.content).toContain("<at user_id=ou_abc></at>");
+    const btn = card.body.elements[1];
+    expect(btn.tag).toBe("button");
+    expect(btn.behaviors).toEqual([{ type: "open_url", url: "https://link" }]);
+  });
+
+  it("buildApprovalCard：无链接时不输出按钮", () => {
+    const card = buildApprovalCard({ title: "t", content: "c" }) as { body: { elements: unknown[] } };
+    expect(card.body.elements).toHaveLength(1);
+  });
+
+  it("卡片发送成功：msg_type=interactive + card 负载", async () => {
+    const fetchMock = jsonFetch({ code: 0 });
+    vi.stubGlobal("fetch", fetchMock);
+    const env = makeEnv({ FEISHU_BOT_WEBHOOK: "https://main.example/hook" });
+    const card = buildApprovalCard({ title: "t", content: "c", link: "https://link" });
+    const r = await notifyFeishu(env, "reimburse", "t", "c", "https://link", { card });
+    expect(r.ok).toBe(true);
+    expect(r.detail).toBe("ok(card)");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, { body: string }];
+    const body = JSON.parse(init.body) as { msg_type: string; card: { schema: string } };
+    expect(body.msg_type).toBe("interactive");
+    expect(body.card.schema).toBe("2.0");
+  });
+
+  it("卡片失败自动回退文本：最终 ok，文本含 @ 人与链接", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+        const body = JSON.parse(init.body) as { msg_type: string };
+        const code = body.msg_type === "interactive" ? 19001 : 0;
+        return new Response(JSON.stringify({ code, msg: code === 0 ? "success" : "card unsupported" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const env = makeEnv({ FEISHU_BOT_WEBHOOK: "https://main.example/hook" });
+      const card = buildApprovalCard({ title: "t", content: "c" });
+      const p = notifyFeishu(env, "reimburse", "t", "c", "https://link", { card, atOpenIds: ["ou_abc"] });
+      // 卡片 3 次重试 + 文本 1 次成功
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(4000);
+      const r = await p;
+      expect(r.ok).toBe(true);
+      expect(r.detail).toContain("卡片失败已回退文本");
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      const lastInit = fetchMock.mock.calls[3][1] as { body: string };
+      const text = (JSON.parse(lastInit.body) as { content: { text: string } }).content.text;
+      expect(text).toContain("<at user_id=ou_abc></at>");
+      expect(text).toContain("去处理：https://link");
+      const putMock = (env as unknown as ReturnType<typeof createMockEnv>).REGISTRY.put;
+      expect(putMock.mock.calls.some((c) => c[0] === KV_KEYS.notifyFailed)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("卡片与文本均失败 → 留痕 notify:failed（详情含两侧错误）", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn(async () => {
+        return new Response(JSON.stringify({ code: 19001, msg: "boom" }), { status: 200, headers: { "content-type": "application/json" } });
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const env = makeEnv({ FEISHU_BOT_WEBHOOK: "https://main.example/hook" });
+      const card = buildApprovalCard({ title: "t", content: "c" });
+      const p = notifyFeishu(env, "reimburse", "t", "c", undefined, { card });
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(i % 2 === 0 ? 1000 : 4000);
+      }
+      const r = await p;
+      expect(r.ok).toBe(false);
+      expect(fetchMock).toHaveBeenCalledTimes(6);
+      const putMock = (env as unknown as ReturnType<typeof createMockEnv>).REGISTRY.put;
+      const putCall = putMock.mock.calls.find((c) => c[0] === KV_KEYS.notifyFailed);
+      expect(putCall).toBeDefined();
+      const list = JSON.parse(putCall![1]) as Array<{ detail: string }>;
+      expect(list[0].detail).toContain("卡片：");
+      expect(list[0].detail).toContain("文本：");
     } finally {
       vi.useRealTimers();
     }

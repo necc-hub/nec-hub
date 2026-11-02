@@ -46,6 +46,10 @@ export interface FlowConfig {
   thresholds?: { notifyRoles?: string; amountField?: string; coSign?: number };
   /** G-05 邮件通道：该流程审批结果的邮件收件人；未配置时 fallback env MAIL_TO，全空则不发邮件 */
   mailTo?: string[];
+  /** 卡片通知灰度开关（PRD_审批通知卡片化）：true 时提交/结果通知发消息卡片，失败自动回退文本；缺省 false 保持纯文本 */
+  cards?: boolean;
+  /** 提交通知 @ 的审批人 open_id 列表（自定义机器人仅支持 open_id @ 人）；未配置不 @ 任何人 */
+  notifyAt?: string[];
   /** G-03 时效治理：升级提醒/自动取消时长，0 = 关闭；不配则走 DEFAULT_FLOWS 默认值 */
   sla?: { escalateHours?: number; autoCancelDays?: number; escalateTo?: string };
   required: string[];           // 必填字段名（与底表字段名一致）

@@ -95,6 +95,8 @@ export interface ReviewFlowConfig<
   extraDefaults?(input: I, prefs: P): Partial<I>;
   versionSeed?: string;
   requiredError: string;
+  /** 必填缺失时报错里的具体字段名（缺省「名称」/「文件」） */
+  labels?: { name: string; files: string };
   tables: {
     events: T;
   };
@@ -220,8 +222,13 @@ export class ReviewFlowService<
   /** 提交前校验（沿用旧 submit 口径）：项目编号 / 名称 / 附件必填，缺失抛 requiredError */
   assertSubmitReady(input: I, defaults: Partial<I>): void {
     const files = readField(input, this.config.fields.files) as { length: number } | undefined;
-    if (!defaults.projectId || !readString(defaults, this.config.fields.name) || !files || files.length === 0) {
-      throw new Error(this.config.requiredError);
+    const missing: string[] = [];
+    if (!defaults.projectId) missing.push("项目编号");
+    if (!readString(defaults, this.config.fields.name)) missing.push(this.config.labels?.name ?? "名称");
+    if (!files || files.length === 0) missing.push(this.config.labels?.files ?? "文件");
+    if (missing.length) {
+      // 保留旧文案为前缀（兼容既有报错匹配），追加具体缺失项便于用户定位
+      throw new Error(`${this.config.requiredError}（当前缺少：${missing.join("、")}）`);
     }
   }
 

@@ -77,7 +77,12 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
     };
     const defaults = await flow.getDefaultSubmissionValues(input, session.open_id);
     flow.assertSubmitReady(input, defaults);
+    // 防呆幂等：同一用户 60s 内同项目+机型+版本的重复提交（双击/网络重试/刷新重发）直接返回已建单
+    const idemKey = `review:submit:${session.open_id}:${defaults.projectId}:${defaults.machineName}:${defaults.drawingVersion}`;
+    const dupId = await env.REGISTRY.get(idemKey);
+    if (dupId) return json(await adapter.findReviewById(dupId));
     await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+    const now = new Date().toISOString();
     const { application_id, status } = await submitApprovalCore(env, {
       type: FLOW_TYPE,
       fields: {
@@ -88,11 +93,14 @@ async function handleAuthed(ctx: ModuleRouteContext<DrawingReviewConfig>): Promi
         设计负责人: defaults.designerId,
         图纸文件: JSON.stringify(input.drawingFiles),
         设计说明: defaults.designNotes,
+        创建时间: now,
+        更新时间: now,
       },
       user: session,
       role: await resolveUserRole(env, session),
       source: "portal",
     });
+    await env.REGISTRY.put(idemKey, application_id, { expirationTtl: 60 });
     await logReviewEvent(adapter, SHELL, application_id, session.open_id, "submit", "draft", status);
     await flow.saveSubmissionPreferences(input, session.open_id);
     return json(await adapter.findReviewById(application_id));

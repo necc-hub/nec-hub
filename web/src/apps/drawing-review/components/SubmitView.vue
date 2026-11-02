@@ -16,6 +16,48 @@ const form = reactive({
 })
 const result = ref<{ ok: boolean; text: string } | null>(null)
 
+// ---- 图纸文件上传（复用 /api/approvals/upload，与硬件评审同一通道） ----
+interface UploadEntry { name: string; size: number; token?: string; uploading: boolean }
+const uploadedFiles = ref<UploadEntry[]>([])
+const submitting = ref(false)
+const uploading = ref(false)
+
+async function onFilesChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = '' // 允许重复选择同一文件
+  for (const file of files) {
+    if (file.size > 10 * 1024 * 1024) {
+      result.value = { ok: false, text: `「${file.name}」超过 10MB 上限，请压缩后上传` }
+      continue
+    }
+    const entry: UploadEntry = { name: file.name, size: file.size, uploading: true }
+    uploadedFiles.value.push(entry)
+    uploading.value = true
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/approvals/upload', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      const saved = data.files?.[0]
+      entry.token = saved?.key || ''
+      entry.name = saved?.name || file.name
+      entry.size = saved?.size ?? file.size
+    } catch (err) {
+      uploadedFiles.value = uploadedFiles.value.filter(f => f !== entry)
+      result.value = { ok: false, text: `「${file.name}」上传失败：${(err as Error).message}` }
+    } finally {
+      entry.uploading = false
+      uploading.value = uploadedFiles.value.some(f => f.uploading)
+    }
+  }
+}
+
+function removeFile(i: number) {
+  uploadedFiles.value.splice(i, 1)
+}
+
 // ---- 联想建议（项目编号 / 机型名称，≥2 字符触发，300ms 防抖） ----
 let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
 const suggestions = reactive<{ project: any[]; machine: any[] }>({ project: [], machine: [] })
@@ -89,6 +131,19 @@ onMounted(() => {
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
 async function onSubmit() {
+  if (submitting.value) return
+  // 客户端防呆：无文件 / 上传中直接拦截并给出明确指引，不发无效请求
+  if (uploading.value) {
+    result.value = { ok: false, text: '图纸文件上传中，请稍候再提交' }
+    return
+  }
+  const files = uploadedFiles.value.filter(f => f.token).map(f => ({ name: f.name, token: f.token as string, size: f.size }))
+  if (files.length === 0) {
+    result.value = { ok: false, text: '请先上传至少一个图纸文件（PDF / DXF / 图片，单个 ≤10MB）' }
+    return
+  }
+  submitting.value = true
+  result.value = null
   try {
     const data = await apiDr('/submit', {
       method: 'POST',
@@ -98,15 +153,18 @@ async function onSubmit() {
         machineName: form.machineName,
         drawingVersion: form.drawingVersion,
         designerId: form.designerId,
-        drawingFiles: [],
+        drawingFiles: files,
         designNotes: form.designNotes,
       }),
     })
     result.value = { ok: true, text: `提交成功：${data.reviewId}` }
     Object.keys(form).forEach(k => { (form as Record<string, string>)[k] = '' })
+    uploadedFiles.value = []
     emit('submitted')
   } catch (err) {
     result.value = { ok: false, text: '失败：' + (err as Error).message }
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -155,11 +213,31 @@ async function onSubmit() {
           </div>
         </div>
         <div>
+          <label class="block text-sm font-medium text-nec-navy mb-1">图纸文件 <span class="text-red-500">*</span></label>
+          <input type="file" multiple @change="onFilesChange"
+                 accept=".pdf,.dxf,.dwg,.step,.stp,.png,.jpg,.jpeg,.zip"
+                 class="w-full rounded-lg border border-dashed border-nec-line px-3 py-3 text-sm text-nec-gray cursor-pointer" />
+          <p class="text-xs text-nec-gray mt-1">支持 PDF / DXF / 图片等，单个文件 ≤10MB，可多选</p>
+          <ul v-if="uploadedFiles.length" class="mt-2 space-y-1">
+            <li v-for="(f, i) in uploadedFiles" :key="i" class="flex items-center justify-between text-sm rounded-lg bg-nec-paper border border-nec-line px-3 py-1.5">
+              <span class="truncate">
+                {{ f.name }}
+                <span class="text-xs text-nec-gray">（{{ (f.size / 1024).toFixed(0) }}KB）</span>
+                <span v-if="f.uploading" class="text-xs text-nec-gray">上传中…</span>
+                <span v-else-if="f.token" class="text-xs text-green-600">✓ 已上传</span>
+              </span>
+              <button type="button" class="text-nec-gray hover:text-red-500 ml-2" :disabled="f.uploading" @click="removeFile(i)">✕</button>
+            </li>
+          </ul>
+        </div>
+        <div>
           <label class="block text-sm font-medium text-nec-navy mb-1">设计说明</label>
           <textarea name="designNotes" v-model="form.designNotes" rows="3" required class="w-full rounded-lg border border-nec-line px-3 py-2 text-sm" placeholder="关键设计参数、变更点"></textarea>
         </div>
         <div class="flex justify-end">
-          <button type="submit" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg">提交评审单</button>
+          <button type="submit" :disabled="submitting || uploading" class="btn-primary text-sm font-medium px-5 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ uploading ? '文件上传中…' : submitting ? '提交中…' : '提交评审单' }}
+          </button>
         </div>
       </form>
       <p v-if="result" id="submit-result" class="mt-3 text-sm" :class="result.ok ? 'text-green-600' : 'text-red-600'">{{ result.text }}</p>

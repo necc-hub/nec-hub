@@ -19,7 +19,7 @@ import {
   updateBitableRecord,
   type BitableRecord,
 } from "../feishu/bitable";
-import { notifyFeishu } from "../feishu/bot";
+import { notifyFeishu, buildApprovalCard } from "../feishu/bot";
 import { notifyApprovalResult } from "../notify";
 import { KV_KEYS } from "../shared/kv-keys";
 import type { HubUser } from "../shared/session";
@@ -134,7 +134,13 @@ export async function submitApprovalCore(env: Env, input: ApprovalSubmitInput): 
     { expirationTtl: 90 * 24 * 3600 },
   );
   const link = buildRecordLink(base, flow.tableId, recordId);
-  await notifyFeishu(env, input.type, approvalNotifyTitle(input.type, applicationId, applicant, fields), approvalNotifyContent(fields), link);
+  const submitTitle = approvalNotifyTitle(input.type, applicationId, applicant, fields);
+  const submitContent = approvalNotifyContent(fields);
+  // 卡片灰度（flow.cards）：提交通知发卡片并 @ notifyAt 配置的审批人；未开启或卡片失败自动回退文本
+  await notifyFeishu(env, input.type, submitTitle, submitContent, link, {
+    card: flow.cards ? buildApprovalCard({ title: submitTitle, content: submitContent, link, atOpenIds: flow.notifyAt, template: "blue" }) : undefined,
+    atOpenIds: flow.notifyAt,
+  });
   // Plan B 会签：金额达阈值时额外提醒（两级审批为 Plan A 能力，Plan B 用通知实现）
   const coField = flow.thresholds?.amountField ?? "";
   const coSign = flow.thresholds?.coSign ?? 0;
@@ -417,12 +423,30 @@ export async function runApprovalAction(env: Env, input: ApprovalActionInput): P
     ];
     // G-05：审批结果走双通道（群机器人 + 飞书邮箱，邮件收件人按 flow.mailTo / env MAIL_TO）
     const applicantKey = findFieldKey(records, [/^申请人$/, /申请人/, /报销人/]);
-    await notifyApprovalResult(env, input.type, `${verdict} ${input.appId}`, lines.join("\n"), link, {
+    const openIdKey = findFieldKey(records, [/open_?id|飞书/i]);
+    const applicantOpenId = openIdKey ? fieldText(record.fields[openIdKey]).trim() : "";
+    const resultTitle = `${verdict} ${input.appId}`;
+    const resultContent = lines.join("\n");
+    await notifyApprovalResult(env, input.type, resultTitle, resultContent, link, {
       applicant: applicantKey ? fieldText(record.fields[applicantKey]) : undefined,
       typeLabel: APPROVAL_LABELS[input.type],
+      applicantOpenId: applicantOpenId || undefined,
+      card: flow.cards
+        ? buildApprovalCard({
+            title: resultTitle,
+            content: resultContent,
+            link,
+            atOpenIds: applicantOpenId ? [applicantOpenId] : undefined,
+            template: input.action === "approve" ? "green" : "red",
+          })
+        : undefined,
     });
   } else {
-    await notifyFeishu(env, input.type, `📌 ${input.appId} 状态更新：${target}`, `操作人：${input.user.name}`, link);
+    const updateTitle = `📌 ${input.appId} 状态更新：${target}`;
+    const updateContent = `操作人：${input.user.name}`;
+    await notifyFeishu(env, input.type, updateTitle, updateContent, link, {
+      card: flow.cards ? buildApprovalCard({ title: updateTitle, content: updateContent, link, template: "wathet" }) : undefined,
+    });
   }
   // G-01 台账联动：状态写底表成功且通知发出后追加，失败不阻断动作本身
   await linkInventory(env, input, record, token, base, flow.tableId);

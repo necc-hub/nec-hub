@@ -59,7 +59,7 @@ export const sendNoticeTool: McpToolDef = {
 export const configFlowsTool: McpToolDef = {
   name: "config_flows",
   description:
-    "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值、流程级状态机 machine、状态字段 statusField、待审批状态集 pendingStates、会签 countersign、单号位数 serialDigits）。action=set 深合并写入；tableId 须 tbl 开头或留空。仅管理端（MCP_TOKEN）。",
+    "查看/修改审批流程配置 flows:config（底表 tableId/base、单号前缀、审批角色、必填与条件必填校验规则、金额会签阈值、流程级状态机 machine、状态字段 statusField、待审批状态集 pendingStates、会签 countersign、单号位数 serialDigits、卡片通知开关 cards、提交 @ 审批人 notifyAt）。action=set 深合并写入；tableId 须 tbl 开头或留空；notifyAt 须 ou_ 开头 open_id 数组。仅管理端（MCP_TOKEN）。",
   inputSchema: {
     type: "object",
     properties: {

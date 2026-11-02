@@ -19,16 +19,20 @@ export interface NotifyResult {
   mail?: { ok: boolean; detail: string; disabled?: boolean };
 }
 
-/** 审批结果通知：群机器人 + 邮件（若该流程配置了收件人） */
+/** 审批结果通知：群机器人 + 邮件（若该流程配置了收件人）。
+ *  opts.applicantOpenId：结果通知 @ 申请人；opts.card：卡片形态（失败自动回退文本）。 */
 export async function notifyApprovalResult(
   env: Env,
   type: ApprovalType,
   title: string,
   content: string,
   link: string | undefined,
-  opts: { applicant?: string; typeLabel?: string } = {},
+  opts: { applicant?: string; typeLabel?: string; applicantOpenId?: string; card?: object } = {},
 ): Promise<NotifyResult> {
-  const bot = await notifyFeishu(env, type, title, content, link);
+  const bot = await notifyFeishu(env, type, title, content, link, {
+    card: opts.card,
+    atOpenIds: opts.applicantOpenId ? [opts.applicantOpenId] : undefined,
+  });
 
   const cfg = await getFlowsConfig(env);
   const mailTo = cfg[type]?.mailTo?.length ? cfg[type].mailTo : defaultMailRecipients(env);

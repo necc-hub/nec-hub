@@ -71,7 +71,12 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
     };
     const defaults = await flow.getDefaultSubmissionValues(input, session.open_id);
     flow.assertSubmitReady(input, defaults);
+    // 防呆幂等：同一用户 60s 内同项目+硬件+版本的重复提交直接返回已建单
+    const idemKey = `review:submit:${session.open_id}:${defaults.projectId}:${defaults.hardwareName}:${defaults.hardwareVersion}`;
+    const dupId = await env.REGISTRY.get(idemKey);
+    if (dupId) return json(await adapter.findReviewById(dupId));
     await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
+    const now = new Date().toISOString();
     const { application_id, status } = await submitApprovalCore(env, {
       type: FLOW_TYPE,
       fields: {
@@ -84,11 +89,14 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
         硬件资料: JSON.stringify(input.hardwareFiles),
         设计说明: defaults.designNotes,
         规格参数: defaults.specification,
+        创建时间: now,
+        更新时间: now,
       },
       user: session,
       role: await resolveUserRole(env, session),
       source: "portal",
     });
+    await env.REGISTRY.put(idemKey, application_id, { expirationTtl: 60 });
     await logReviewEvent(adapter, SHELL, application_id, session.open_id, "submit", "draft", status);
     await flow.saveSubmissionPreferences(input, session.open_id);
     return json(await adapter.findReviewById(application_id));

@@ -432,6 +432,14 @@ export async function toolConfigFlows(args: Record<string, unknown>, env: Env, h
         throw new Error(`serialDigits 不合法（${t}）：应为 1-8 的整数（默认 4，合同 HT 用 3）`);
       }
     }
+    if (patch.cards !== undefined && typeof patch.cards !== "boolean") {
+      throw new Error(`cards 不合法（${t}）：应为布尔值（true=卡片通知，false=纯文本）`);
+    }
+    if (patch.notifyAt !== undefined) {
+      if (!Array.isArray(patch.notifyAt) || patch.notifyAt.some((s) => typeof s !== "string" || !/^ou_[A-Za-z0-9]+$/.test(s.trim()))) {
+        throw new Error(`notifyAt 不合法（${t}）：应为 open_id（ou_ 开头）字符串数组`);
+      }
+    }
     const merged = { ...current[t], ...patch } as FlowConfig;
     if (merged.tableId && !/^tbl[A-Za-z0-9]+$/.test(merged.tableId)) {
       throw new Error(`table_id 不合法（${t}）：应以 tbl 开头或留空`);

@@ -11,9 +11,14 @@ const props = defineProps<{ reviewId: string }>()
 const review = ref<Review | null>(null)
 const error = ref('')
 
-// 会议纪要表单
-const minutes = ref({ meetingTime: '', discussion: '', conclusion: 'passed' })
+// 会议纪要表单（会议时间默认当前时间，免手填；datetime-local 需要本地格式 YYYY-MM-DDTHH:mm）
+function localDatetimeValue(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+const minutes = ref({ meetingTime: localDatetimeValue(), discussion: '', conclusion: 'passed' })
 const minutesResult = ref<{ ok: boolean; text: string } | null>(null)
+const minutesSaving = ref(false)
 
 // BOM 表单
 const bomItems = ref('')
@@ -60,6 +65,13 @@ async function completeRectify() {
 }
 
 async function saveMinutes() {
+  if (minutesSaving.value) return
+  if (!minutes.value.discussion.trim()) {
+    minutesResult.value = { ok: false, text: '请填写讨论记录' }
+    return
+  }
+  minutesSaving.value = true
+  minutesResult.value = { ok: true, text: '保存中…（含通知推送，约需几秒）' }
   try {
     await apiDr(`/${props.reviewId}/minutes`, {
       method: 'POST',
@@ -84,6 +96,8 @@ async function saveMinutes() {
     load()
   } catch (err) {
     minutesResult.value = { ok: false, text: '失败：' + (err as Error).message }
+  } finally {
+    minutesSaving.value = false
   }
 }
 
@@ -163,7 +177,9 @@ onMounted(load)
               <option value="rejected">不通过</option>
             </select>
           </div>
-          <button type="submit" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">保存纪要并提交结论</button>
+          <button type="submit" :disabled="minutesSaving" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ minutesSaving ? '保存中…' : '保存纪要并提交结论' }}
+          </button>
         </form>
         <p v-if="minutesResult" id="minutes-result" class="mt-2 text-sm" :class="minutesResult.ok ? 'text-green-600' : 'text-red-600'">{{ minutesResult.text }}</p>
       </div>

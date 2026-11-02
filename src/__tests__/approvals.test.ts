@@ -836,3 +836,63 @@ describe("config_flows 新字段校验", () => {
     expect(saved.serialDigits).toBe(3);
   });
 });
+
+describe("卡片通知灰度（cards / notifyAt）", () => {
+  it("cards=true：提交通知发 interactive 卡片（蓝色）并 @ notifyAt 审批人", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE, cards: true, notifyAt: ["ou_captain"] } }));
+    await submitApprovalCore(ctx.env, {
+      type: "reimburse",
+      fields: { 事项: "打印纸", 报销金额: 12, 发票号: "INV-1", 发票照片: "photo.jpg" },
+      user: MEMBER, role: MEMBER_ROLE, source: "portal",
+    });
+    expect(ctx.webhookCalls).toHaveLength(1);
+    const body = ctx.webhookCalls[0].body;
+    expect(body.msg_type).toBe("interactive");
+    const card = body.card as {
+      schema: string;
+      header: { template: string };
+      body: { elements: Array<{ tag: string; content?: string }> };
+    };
+    expect(card.schema).toBe("2.0");
+    expect(card.header.template).toBe("blue");
+    expect(card.body.elements[0].content).toContain("<at user_id=ou_captain></at>");
+  });
+
+  it("cards 缺省：提交通知保持纯文本（零变化）", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    await submitApprovalCore(ctx.env, {
+      type: "reimburse",
+      fields: { 事项: "打印纸", 报销金额: 12, 发票号: "INV-1", 发票照片: "photo.jpg" },
+      user: MEMBER, role: MEMBER_ROLE, source: "portal",
+    });
+    expect(ctx.webhookCalls[0].body.msg_type).toBe("text");
+  });
+
+  it("approve 结果卡片绿色并 @ 申请人 open_id", async () => {
+    const ctx = createCtx({ withWebhook: true });
+    ctx.kv.set(KV_KEYS.flowsConfig, JSON.stringify({ reimburse: { tableId: TBL_REIMBURSE, base: BASE, cards: true } }));
+    ctx.seed(TBL_REIMBURSE, { 申请单号: "BX-2026-0001", 状态: "审批中", 申请人: "张三", "申请人 open_id": "ou_member1" });
+    await runApprovalAction(ctx.env, { type: "reimburse", appId: "BX-2026-0001", action: "approve", user: CAPTAIN, role: CAPTAIN_ROLE });
+    const body = ctx.webhookCalls[0].body;
+    expect(body.msg_type).toBe("interactive");
+    const card = body.card as { header: { template: string }; body: { elements: Array<{ content?: string }> } };
+    expect(card.header.template).toBe("green");
+    expect(card.body.elements[0].content).toContain("<at user_id=ou_member1></at>");
+  });
+
+  it("config_flows：cards/notifyAt 非法输入被拦，合法写入生效", async () => {
+    const ctx = createCtx();
+    await expect(
+      toolConfigFlows({ action: "set", flows: { reimburse: { cards: "yes" } } }, ctx.env, true),
+    ).rejects.toThrow("cards 不合法");
+    await expect(
+      toolConfigFlows({ action: "set", flows: { reimburse: { notifyAt: ["not-open-id"] } } }, ctx.env, true),
+    ).rejects.toThrow("notifyAt 不合法");
+    const res = await toolConfigFlows({ action: "set", flows: { reimburse: { cards: true, notifyAt: ["ou_abc"] } } }, ctx.env, true);
+    expect(res.content[0].text).toContain("✅");
+    const saved = (await getFlowsConfig(ctx.env)).reimburse;
+    expect(saved.cards).toBe(true);
+    expect(saved.notifyAt).toEqual(["ou_abc"]);
+  });
+});

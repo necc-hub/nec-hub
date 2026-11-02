@@ -86,6 +86,7 @@ const FLOW_CONFIG: ReviewFlowConfig<ReviewStatus, HardwareReview, SubmitReviewIn
     specification: input.specification || "",
   }),
   requiredError: "项目编号、硬件名称和硬件资料为必填项",
+  labels: { name: "硬件名称", files: "硬件资料" },
   tables: {
     events: "events",
   },

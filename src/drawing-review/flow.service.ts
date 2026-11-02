@@ -102,6 +102,7 @@ const FLOW_CONFIG: ReviewFlowConfig<ReviewStatus, DrawingReview, SubmitReviewInp
   defaultDesignNotes: (prefs) => defaultDesignNotesTemplate(prefs.preferredTemplate),
   versionSeed: "V0.0",
   requiredError: "项目编号、机型名称和图纸文件为必填项",
+  labels: { name: "机型名称", files: "图纸文件" },
   tables: {
     events: "events",
   },
