@@ -10,7 +10,7 @@
  * 入口骨架（配置接口 / 503 / 会话 / 401 / 500 兜底）统一由 shared/module-gateway 提供。
  */
 
-import { ensureFlowTableLink } from "../approvals/flows";
+import { ensureFlowTableLink, resolveMainTableId } from "../approvals/flows";
 import { submitApprovalCore } from "../approvals/engine";
 import { resolveUserRole } from "../auth/role";
 import { json, readJson } from "../shared/http";
@@ -52,6 +52,8 @@ export async function handleHardwareReview(request: Request, env: Env, pathname:
 
 async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Promise<Response | null> {
   const { request, env, cfg, session, pathname } = ctx;
+  // 主表单源：flows:config 优先，模块配置仅作回退（架构优化 #5）
+  cfg.tables.reviews = await resolveMainTableId(env, FLOW_TYPE, cfg.tables.reviews ?? "");
   const adapter = new HardwareReviewAdapter(env, cfg);
   const flow = new ReviewFlowService(env, adapter);
 
@@ -142,7 +144,7 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
           startMeeting: async (reviewId, _actorId, payload) => {
             const current = await adapter.findReviewById(reviewId);
             if (!current) throw new Error(`评审单 ${reviewId} 不存在`);
-            if (!nextStatus(current.status, "start_meeting")) {
+            if (!(await nextStatus(env, current.status, "start_meeting"))) {
               throw new Error(`当前状态 ${current.status} 不允许开始会议`);
             }
             await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
@@ -211,7 +213,7 @@ async function handleAuthed(ctx: ModuleRouteContext<HardwareReviewConfig>): Prom
     const reviewId = rectifyMatch[1];
     const current = await adapter.findReviewById(reviewId);
     if (!current) throw new Error(`评审单 ${reviewId} 不存在`);
-    if (!nextStatus(current.status, "complete")) throw new Error(`当前状态 ${current.status} 不允许完成整改`);
+    if (!(await nextStatus(env, current.status, "complete"))) throw new Error(`当前状态 ${current.status} 不允许完成整改`);
     await ensureFlowTableLink(env, FLOW_TYPE, cfg.tables.reviews, cfg.base);
     await runReviewEngineAction(
       env, SHELL, adapter, reviewId, "complete", session, await resolveUserRole(env, session),

@@ -4,6 +4,7 @@
 import { reactive, ref, onMounted, onBeforeUnmount } from 'vue'
 import { auth } from '@shared/auth'
 import { apiDr } from '@shared/api'
+import { useFileUpload } from '@shared/useFileUpload'
 
 const emit = defineEmits<{ (e: 'submitted'): void }>()
 
@@ -16,47 +17,9 @@ const form = reactive({
 })
 const result = ref<{ ok: boolean; text: string } | null>(null)
 
-// ---- 图纸文件上传（复用 /api/approvals/upload，与硬件评审同一通道） ----
-interface UploadEntry { name: string; size: number; token?: string; uploading: boolean }
-const uploadedFiles = ref<UploadEntry[]>([])
+// ---- 图纸文件上传（共享 composable：10MB 校验/进度/删除/错误文案统一） ----
+const { uploadedFiles, uploading, readyFiles, error: uploadError, onFilesChange, removeFile, reset: resetFiles } = useFileUpload()
 const submitting = ref(false)
-const uploading = ref(false)
-
-async function onFilesChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = Array.from(input.files ?? [])
-  input.value = '' // 允许重复选择同一文件
-  for (const file of files) {
-    if (file.size > 10 * 1024 * 1024) {
-      result.value = { ok: false, text: `「${file.name}」超过 10MB 上限，请压缩后上传` }
-      continue
-    }
-    const entry: UploadEntry = { name: file.name, size: file.size, uploading: true }
-    uploadedFiles.value.push(entry)
-    uploading.value = true
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await fetch('/api/approvals/upload', { method: 'POST', body: fd })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      const saved = data.files?.[0]
-      entry.token = saved?.key || ''
-      entry.name = saved?.name || file.name
-      entry.size = saved?.size ?? file.size
-    } catch (err) {
-      uploadedFiles.value = uploadedFiles.value.filter(f => f !== entry)
-      result.value = { ok: false, text: `「${file.name}」上传失败：${(err as Error).message}` }
-    } finally {
-      entry.uploading = false
-      uploading.value = uploadedFiles.value.some(f => f.uploading)
-    }
-  }
-}
-
-function removeFile(i: number) {
-  uploadedFiles.value.splice(i, 1)
-}
 
 // ---- 联想建议（项目编号 / 机型名称，≥2 字符触发，300ms 防抖） ----
 let suggestionTimeout: ReturnType<typeof setTimeout> | undefined
@@ -164,7 +127,7 @@ async function onSubmit() {
     result.value = { ok: false, text: '图纸文件上传中，请稍候再提交' }
     return
   }
-  const files = uploadedFiles.value.filter(f => f.token).map(f => ({ name: f.name, token: f.token as string, size: f.size }))
+  const files = readyFiles.value
   if (files.length === 0) {
     result.value = { ok: false, text: '请先上传至少一个图纸文件（PDF / DXF / 图片，单个 ≤10MB）' }
     return
@@ -186,7 +149,7 @@ async function onSubmit() {
     })
     result.value = { ok: true, text: `提交成功：${data.reviewId}` }
     Object.keys(form).forEach(k => { (form as Record<string, string>)[k] = '' })
-    uploadedFiles.value = []
+    resetFiles()
     versionTouched.value = false
     versionAutoHint.value = ''
     delegateMode.value = false
@@ -283,6 +246,7 @@ async function onSubmit() {
           </button>
         </div>
       </form>
+      <p v-if="uploadError" class="mt-3 text-sm text-red-600">{{ uploadError }}</p>
       <p v-if="result" id="submit-result" class="mt-3 text-sm" :class="result.ok ? 'text-green-600' : 'text-red-600'">{{ result.text }}</p>
     </div>
   </section>

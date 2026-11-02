@@ -19,6 +19,7 @@ import type {
   ContractType,
 } from "./types";
 import { StateMachine, type TransitionRule } from "../approvals/core/state-machine";
+import { nextFlowStatus } from "../approvals/flows";
 
 /** 合同审批事件（动作名） */
 type ContractEvent = "submit" | "start_review" | "approve" | "reject" | "revise" | "resubmit" | "archive";
@@ -54,8 +55,9 @@ export const CONTRACT_STATE_MACHINE = new StateMachine<ContractEvent, ContractAp
 export const TRANSITIONS: Record<ContractApprovalStatus, Partial<Record<string, ContractApprovalStatus>>> =
   CONTRACT_STATE_MACHINE.toTransitionMap();
 
-export function nextStatus(current: ContractApprovalStatus, event: string): ContractApprovalStatus | null {
-  return TRANSITIONS[current]?.[event] ?? null;
+/** 薄壳预检：状态机单源（flows:config 的 contract.machine），替代模块内重复定义 */
+export function nextStatus(env: Env, current: ContractApprovalStatus, event: string): Promise<ContractApprovalStatus | null> {
+  return nextFlowStatus(env, "contract", current, event) as Promise<ContractApprovalStatus | null>;
 }
 
 export interface SubmitApprovalInput {

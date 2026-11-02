@@ -1,7 +1,7 @@
 /**
  * G-03 审批时效治理（PRD V1.2 §5）：每小时 cron（"7 * * * *"）扫描各流程底表
  *   - 待审批状态（flow.pendingStates，缺省 ["审批中"]）超 sla.escalateHours（默认 48h）→ 升级提醒（KV approval:esc:<appId> 幂等，TTL=距自动取消剩余秒数）
- *   - 待审批状态超 sla.autoCancelDays（默认 14 天）→ 状态直接改「已取消」（不走 ACTION_TARGET）+ 群通知 + 清升级标记
+ *   - 待审批状态超 sla.autoCancelDays（默认 14 天）→ 状态改 sla.cancelStatus（默认「已取消」）+ 群通知 + 清升级标记
  * sla 全关（均为 0）或未配 tableId 的流程跳过；提交时间为空的脏数据行跳过并记日志（不误伤）。
  * 底表读取复用 todo:tbl:<type> 5 分钟缓存（与 engine.aggregateTodos 同键同 TTL），整轮失败只记日志，
  * 有动作时向主群（flow=default）发一条汇总。
@@ -99,8 +99,9 @@ export async function runApprovalSla(env: Env): Promise<SlaRunSummary> {
         const applicant = applicantKey ? fieldText(r.fields[applicantKey]).trim() : "";
 
         if (cancelMs > 0 && age > cancelMs) {
-          await updateBitableRecord(token, base, flow.tableId, r.record_id, { [statusKey]: "已取消" });
-          r.fields[statusKey] = "已取消";
+          const cancelStatus = flow.sla?.cancelStatus ?? "已取消";
+          await updateBitableRecord(token, base, flow.tableId, r.record_id, { [statusKey]: cancelStatus });
+          r.fields[statusKey] = cancelStatus;
           tableDirty = true;
           await notifyFeishu(
             env,

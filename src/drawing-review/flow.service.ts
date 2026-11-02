@@ -8,6 +8,7 @@
  */
 
 import type { DrawingReviewAdapter } from "./adapter";
+import { nextFlowStatus } from "../approvals/flows";
 import {
   createReviewStateMachine,
   ReviewFlowService as SharedReviewFlowService,
@@ -43,10 +44,12 @@ const STATE_MACHINE = createReviewStateMachine<ReviewStatus>({
   archived: {},
 });
 
+/** 看板/展示用状态表（行为裁决以 flows:config 的 machine 为唯一来源，本表仅展示，勿用于流转判定） */
 export const TRANSITIONS: Record<ReviewStatus, Partial<Record<string, ReviewStatus>>> = STATE_MACHINE.toTransitionMap();
 
-export function nextStatus(current: ReviewStatus, event: string): ReviewStatus | null {
-  return STATE_MACHINE.next(current, event);
+/** 薄壳预检：状态机单源（flows:config 的 drawing_review.machine），替代模块内重复定义 */
+export function nextStatus(env: Env, current: ReviewStatus, event: string): Promise<ReviewStatus | null> {
+  return nextFlowStatus(env, "drawing_review", current, event) as Promise<ReviewStatus | null>;
 }
 
 export interface SubmitReviewInput {

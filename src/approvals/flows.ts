@@ -50,8 +50,9 @@ export interface FlowConfig {
   cards?: boolean;
   /** 提交通知 @ 的审批人 open_id 列表（自定义机器人仅支持 open_id @ 人）；未配置不 @ 任何人 */
   notifyAt?: string[];
-  /** G-03 时效治理：升级提醒/自动取消时长，0 = 关闭；不配则走 DEFAULT_FLOWS 默认值 */
-  sla?: { escalateHours?: number; autoCancelDays?: number; escalateTo?: string };
+  /** G-03 时效治理：升级提醒/自动取消时长，0 = 关闭；不配则走 DEFAULT_FLOWS 默认值；
+   *  cancelStatus = 自动取消写入的状态名（默认「已取消」，英文状态机流程须配置如 "cancelled" 才可开启自动取消） */
+  sla?: { escalateHours?: number; autoCancelDays?: number; escalateTo?: string; cancelStatus?: string };
   required: string[];           // 必填字段名（与底表字段名一致）
   conditional?: Array<{ when: { field: string; equals: string }; require: string[] }>;
   /** 流程级自定义状态机（评审模块英文状态）；缺省走引擎全局状态机 */
@@ -288,6 +289,20 @@ export function evalFlowFields(flow: FlowConfig, fields: Record<string, unknown>
     if (v !== null && v <= 0) missing.push(`${name}（须大于 0）`);
   }
   return [...new Set(missing)];
+}
+
+/** 主表配置单源：flows:config 的 tableId 优先，模块配置仅作兼容回退（配置双源收敛，架构优化 #5） */
+export async function resolveMainTableId(env: Env, type: ApprovalType, fallback: string): Promise<string> {
+  const cfg = await getFlowsConfig(env);
+  return cfg[type].tableId || fallback;
+}
+
+/** 状态机单源：按 flows:config 的 machine 求下一状态（评审薄壳预检用，替代模块内重复的 TRANSITIONS 拷贝） */
+export async function nextFlowStatus(env: Env, type: ApprovalType, current: string, event: string): Promise<string | null> {
+  const cfg = await getFlowsConfig(env);
+  const machine = cfg[type].machine;
+  if (!machine) return null;
+  return machine.transitions.find((t) => t.action === event && t.from === current)?.to ?? null;
 }
 
 /** 在表记录里按"申请单号"字段定位一行（字段名不固定时模糊匹配） */

@@ -28,16 +28,17 @@ vi.mock("../../feishu/member-directory", () => ({ loadMemberDirectory: vi.fn() }
 // ---------- 状态表与纯校验 ----------
 
 describe("contract-approval 状态机", () => {
-  it("nextStatus 覆盖全部流转", () => {
-    expect(nextStatus("draft", "submit")).toBe("pending_approval");
-    expect(nextStatus("pending_approval", "start_review")).toBe("in_review");
-    expect(nextStatus("in_review", "approve")).toBe("approved");
-    expect(nextStatus("in_review", "reject")).toBe("rejected");
-    expect(nextStatus("in_review", "revise")).toBe("revised");
-    expect(nextStatus("revised", "resubmit")).toBe("pending_approval");
-    expect(nextStatus("approved", "archive")).toBe("archived");
-    expect(nextStatus("rejected", "archive")).toBe("archived");
-    expect(nextStatus("archived", "submit")).toBeNull();
+  it("nextStatus 覆盖全部流转", async () => {
+    const env = { REGISTRY: { get: async () => null } } as unknown as Env;
+    expect(await nextStatus(env, "draft", "submit")).toBe("pending_approval");
+    expect(await nextStatus(env, "pending_approval", "start_review")).toBe("in_review");
+    expect(await nextStatus(env, "in_review", "approve")).toBe("approved");
+    expect(await nextStatus(env, "in_review", "reject")).toBe("rejected");
+    expect(await nextStatus(env, "in_review", "revise")).toBe("revised");
+    expect(await nextStatus(env, "revised", "resubmit")).toBe("pending_approval");
+    expect(await nextStatus(env, "approved", "archive")).toBe("archived");
+    expect(await nextStatus(env, "rejected", "archive")).toBe("archived");
+    expect(await nextStatus(env, "archived", "submit")).toBeNull();
   });
 });
 
@@ -294,7 +295,7 @@ describe("contract-approval 薄壳会签（引擎承担）", () => {
     const submitted = await api(ctx, USERS.sub.sid, "/api/contract-approval/submit", "POST", validBody());
     const id = submitted.data.approvalId as string;
     const denied = await api(ctx, SID_OUT, `/api/contract-approval/${id}/start-review`, "POST");
-    expect(denied.status).toBe(500);
+    expect(denied.status).toBe(403);
     expect(denied.data.error).toContain("参与人");
     const ok = await api(ctx, SID_A, `/api/contract-approval/${id}/start-review`, "POST");
     expect(ok.status).toBe(200);
@@ -308,15 +309,15 @@ describe("contract-approval 薄壳会签（引擎承担）", () => {
   it("非审批人不能审批（提交人/外人都不行）；重复审批拒绝", async () => {
     const id = await submitAndStart(ctx);
     const byOutsider = await api(ctx, SID_OUT, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
-    expect(byOutsider.status).toBe(500);
+    expect(byOutsider.status).toBe(403);
     expect(byOutsider.data.error).toContain("参与人");
     const bySubmitter = await api(ctx, USERS.sub.sid, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
-    expect(bySubmitter.status).toBe(500);
+    expect(bySubmitter.status).toBe(403);
     expect(bySubmitter.data.error).toContain("会签审批人");
 
     await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
     const dup = await api(ctx, SID_A, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
-    expect(dup.status).toBe(500);
+    expect(dup.status).toBe(409);
     expect(dup.data.error).toContain("已提交过审批意见");
   });
 
@@ -394,7 +395,7 @@ describe("contract-approval 薄壳会签（引擎承担）", () => {
     await api(ctx, SID_B, `/api/contract-approval/${id}/action`, "POST", { action: "approve" });
 
     const byOutsider = await api(ctx, SID_OUT, `/api/contract-approval/${id}/archive`, "POST");
-    expect(byOutsider.status).toBe(500);
+    expect(byOutsider.status).toBe(403);
     expect(byOutsider.data.error).toContain("参与人");
 
     const archived = await api(ctx, USERS.sub.sid, `/api/contract-approval/${id}/archive`, "POST");

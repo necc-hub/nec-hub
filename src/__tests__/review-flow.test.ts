@@ -12,15 +12,15 @@ import {
 } from "../hardware-review/flow.service";
 import type { HardwareReview, ReviewStatus as HardwareReviewStatus } from "../hardware-review/types";
 
-function expectTransitions<S extends string>(
+async function expectTransitions<S extends string>(
   transitions: Record<S, Partial<Record<string, S>>>,
-  next: (current: S, event: string) => S | null,
+  next: (current: S, event: string) => Promise<S | null>,
 ) {
   for (const state of Object.keys(transitions) as S[]) {
     for (const [event, target] of Object.entries(transitions[state])) {
-      expect(next(state, event)).toBe(target);
+      expect(await next(state, event)).toBe(target);
     }
-    expect(next(state, "unknown_event")).toBeNull();
+    expect(await next(state, "unknown_event")).toBeNull();
   }
 }
 
@@ -77,7 +77,7 @@ function makeEnv(): Env {
 }
 
 describe("共享评审流程行为对比", () => {
-  it("TRANSITIONS 与 nextStatus 保留两模块各自状态表", () => {
+  it("TRANSITIONS 与 nextStatus 保留两模块各自状态表", async () => {
     expect(DRAWING_TRANSITIONS).toEqual({
       draft: { submit: "pending_review" },
       pending_review: { start_meeting: "in_review" },
@@ -107,8 +107,9 @@ describe("共享评审流程行为对比", () => {
       approved: { archive: "archived" },
       archived: {},
     });
-    expectTransitions(DRAWING_TRANSITIONS, drawingNextStatus);
-    expectTransitions(HARDWARE_TRANSITIONS, hardwareNextStatus);
+    const env = makeEnv();
+    await expectTransitions(DRAWING_TRANSITIONS, (c, e) => drawingNextStatus(env, c, e));
+    await expectTransitions(HARDWARE_TRANSITIONS, (c, e) => hardwareNextStatus(env, c, e));
   });
 
   it("共享状态机支持同一事件在不同前置状态流向不同目标", async () => {

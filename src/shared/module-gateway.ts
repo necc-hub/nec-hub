@@ -3,7 +3,7 @@
  *
  * 统一三个模块入口的公共流程：
  *   /config 接口（GET 查配置免登录 / POST 写配置可配管理员角色门禁）→ 未配置 503 → 会话解析（同 sid 滑动续期）
- *   → 401 未登录 →（可选角色门禁 403）→ 业务分发（500 兜底）
+ *   → 401 未登录 →（可选角色门禁 403）→ 业务分发（业务错误按 .status 透传 4xx，其余 500 兜底）
  * 业务分发返回 null 表示路径不匹配，交回入口 if 链继续 fallthrough（此语义不可变）。
  * 各模块的错误文案/状态码按参数逐字保留。
  */
@@ -97,7 +97,12 @@ export async function withModuleGate<Cfg extends { base: string; tables: object 
     res = await spec.handler({ request, env, cfg, session: s.user, pathname });
   } catch (err) {
     console.error(`[${spec.logTag}] ${pathname} error:`, err);
-    res = json({ error: err instanceof Error ? err.message : String(err) }, 500);
+    // 业务错误透传语义状态码（ApprovalError 等带 .status 的 4xx），系统错误仍 500
+    const status = (err as { status?: number } | null)?.status;
+    res = json(
+      { error: err instanceof Error ? err.message : String(err) },
+      typeof status === "number" && status >= 400 && status < 600 ? status : 500,
+    );
   }
   return res;
 }

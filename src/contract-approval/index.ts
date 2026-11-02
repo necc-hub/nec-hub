@@ -10,7 +10,7 @@
  */
 
 import { submitApprovalCore, runApprovalAction } from "../approvals/engine";
-import { ensureFlowTableLink } from "../approvals/flows";
+import { ensureFlowTableLink, resolveMainTableId } from "../approvals/flows";
 import { peekNextSerial } from "../approvals/core/serial";
 import { resolveUserRole } from "../auth/role";
 import { ContractApprovalAdapter } from "./adapter";
@@ -71,6 +71,8 @@ export async function handleContractApproval(
 
 async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Promise<Response | null> {
   const { request, env, cfg, session, pathname } = ctx;
+  // 主表单源：flows:config 优先，模块配置仅作回退（架构优化 #5）
+  cfg.tables.approvals = await resolveMainTableId(env, "contract", cfg.tables.approvals ?? "");
   const store = new ContractApprovalAdapter(env, cfg);
 
   // 提交审批单（薄壳：提交前校验 + 手动编号查重 → 引擎写单与通知；事件日志留本层）
@@ -170,7 +172,7 @@ async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Pr
   if (startMatch && request.method === "POST") {
     const id = startMatch[1];
     const current = await requireApproval(store, id);
-    if (!nextStatus(current.status, "start_review")) {
+    if (!(await nextStatus(env, current.status, "start_review"))) {
       throw new Error(`当前状态 ${current.status} 不允许开始审批`);
     }
     await runContractAction(env, cfg, id, "start_review", session);
@@ -219,7 +221,7 @@ async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Pr
     const id = resubmitMatch[1];
     const current = await requireApproval(store, id);
     if (session.open_id !== current.submittedBy) throw new Error("只有提交人可以重新提交");
-    if (!nextStatus(current.status, "resubmit")) {
+    if (!(await nextStatus(env, current.status, "resubmit"))) {
       throw new Error(`当前状态 ${current.status} 不允许重新提交`);
     }
     // 重新提交后所有审批人重置为待审批；若换审批人则整表替换
@@ -242,7 +244,7 @@ async function handleAuthed(ctx: ModuleRouteContext<ContractApprovalConfig>): Pr
   if (archiveMatch && request.method === "POST") {
     const id = archiveMatch[1];
     const current = await requireApproval(store, id);
-    if (!nextStatus(current.status, "archive")) {
+    if (!(await nextStatus(env, current.status, "archive"))) {
       throw new Error(`当前状态 ${current.status} 不允许归档`);
     }
     await runContractAction(env, cfg, id, "archive", session);

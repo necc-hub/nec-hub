@@ -144,6 +144,17 @@ export function resolveFlowWebhook(env: Env, flow: string): FlowWebhook {
   return { url: env.FEISHU_WEBHOOK_URL, secret: env.FEISHU_WEBHOOK_SECRET };
 }
 
+/** 通知后台化：生产用 cloudflare:workers 的全局 waitUntil 挂到请求生命周期（响应先返回，通知后台发）；
+ *  测试/无请求上下文环境（动态 import 失败）降级为直接 await，保证行为可测。 */
+export async function notifyInBackground(promise: Promise<unknown>): Promise<void> {
+  try {
+    const { waitUntil } = await import("cloudflare:workers");
+    waitUntil(promise);
+  } catch {
+    await promise;
+  }
+}
+
 /**
  * 飞书群机器人 webhook 通知（PRD V1.1 N-01）。
  * 失败（网络异常/code!==0）重试 2 次（1s、4s），仍失败写 KV notify:failed；调用方不抛错。
