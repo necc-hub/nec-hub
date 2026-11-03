@@ -34,7 +34,7 @@
 | FE-12 Skill CI | ✅ | 已确认满足：`quality-check.yml` 强制校验 SKILL.md + PR 自动评论质量报告 |
 | FE-13 lark-cli 调研 | ✅ | 《lark-cli能力边界验证报告》已归档；结论：多维表格读写全自动化、应用版本发布可走 api 逃生舱（未实测）、定制工作台无 OpenAPI |
 | FE-14 图纸评审流程 | ✅ | 10 张逻辑表配齐 + 询价比价 + 流程看板（阻塞预警/甘特图）+ 群通知 + 阻塞告警 cron 已上线；审批侧五组端到端实测通过（V1.1 F-01）；**2026-10-15 增补**：库存手动导入兜底（`inventory.service.ts`，§13.7 验收 2，幂等可重复导入）、§11 待确认问题转决策跟踪表（7 项均附建议方案）、《灰度执行手册》归档；持续迭代（联想/BOM/6014 专项页） |
-| FE-19 域名分发系统 | 🔄 | 自助三级/四级域名申请（保留名/限额/防回环校验）+ 泛域名 R2 应用直达（deploy_app 零配置）+ 门户 `/apps/domains/` 页 + 使用手册已上线并注册应用广场（2026-10-15）；**待配置**：`*` 泛 DNS 记录 + `CF_API_TOKEN`/`CF_ZONE_ID` secrets，配好后全链路实测一单 |
+| FE-19 域名分发系统 | 🔄 | 自助三级/四级域名申请 + 泛域名 R2 应用直达（deploy_app 零配置）+ 门户 `/apps/domains/` 页已上线；**2026-11-03 配置收口**：CF secrets + `*` 泛 DNS 生效，应用直达/404 引导实测通过，并修复 assets 层吞根路径（`run_worker_first: true`）；待登录态申请一单端到端实测 |
 
 ---
 
@@ -572,7 +572,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 3. R2 已部署应用经 `https://<name>.newenergycoder.club` 直接可访问；已登记外部 CNAME 的子域名不被泛路由劫持。
 4. 四级域名申请强制 proxied=false 且响应 hint 含证书提示。
 
-**进展（2026-10-15 代码上线，待配置）**：模块 `src/domains/`（types/cloudflare/service/index/wildcard）+ 门户应用页 `public/apps/domains/` + 使用手册已归档并注册进应用广场；`src/index.ts` 挂载 `/api/domains/*` 与泛路由，cron 收敛 4→3 规避免费版 5 触发器上限；vitest 全量 310 用例全绿（含域名分发与泛路由用例）。**待办**：① Cloudflare DNS 手动加 `*` 泛解析记录（AAAA → `100::`，橙云）；② `wrangler secret put CF_API_TOKEN / CF_ZONE_ID`；③ 全链路实测一单；④ 优化 backlog：KV 索引改 per-subdomain key 消并发写竞态、申请/释放推飞书群、MCP `apply_domain` 工具、域名到期回收与 DNS 对账 cron。
+**进展（2026-11-03 配置收口，实测通过）**：模块 `src/domains/`（types/cloudflare/service/index/wildcard）+ 门户应用页 `public/apps/domains/` + 使用手册已归档并注册进应用广场；cron 收敛规避免费版触发器上限；vitest 全量 310 用例全绿。2026-11-03 完成配置：`CF_API_TOKEN`/`CF_ZONE_ID` secrets 已写入、`*` 泛 DNS 记录（AAAA → `100::` 橙云）生效、`syncEnabled: true`；实测：已部署应用子域名（kv-assets）返回真实应用、未部署子域名根路径返回 404 引导 JSON、hub 门户无回归。修复 assets 层吞根路径问题（`run_worker_first: true`，否则子域名 `/` 被直接返回门户 index.html）。**待办**：登录态申请一单做 DNS 自动创建端到端实测；优化 backlog：KV 索引改 per-subdomain key 消并发写竞态、申请/释放推飞书群、MCP `apply_domain` 工具、域名到期回收与 DNS 对账 cron。
 
 ## 6. 非功能需求
 
@@ -656,6 +656,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | V2.0 修订 | 2026-10-15 | §0 全面刷新（对齐代码现状与各 FE 进展：FE-03/04/05/06/07/10/12/13/14 升 ✅，FE-08/09 刷新为审批 PRD V1.1/V1.2 口径）；§4 现状盘点修订（域拆分架构、灌数进展、缺口清单更新） |
 | V2.1 | 2026-10-16 | **累积修订固化升版**（文件同步更名 `团队AI中台PRD_V2.1.md`）：FE-06 首页工作台升级（评审 12 项全落地，`e319e41`）；FE-16 合同审批可用性重构（评审 13 项落地 12，`72790bb`）；任务排期白底主题 + Git 式流线图（`3bc9df7`）；FE-08 报销台账 manage 接口 + 45 张采购发票 R-01 批次（`a072491`/`a9d2d1b`）；FE-01 登录体验优化（无感重登/auth.phase/AuthToast/OAuth 保现场，`2d8b153`）；Cron 时间窗调度重构 + guard 去重、快触发器 */8、看板 TTL 1800s（`90241f1`/`1b9d053`）；新增团队周报自动化 `src/reports/weekly.ts`（周一 08:16 UTC+8 快照 diff 推群 + 手动补发端点）；《NEC-HUB 模块优化评估报告 V1.0》归档；vitest 33 文件 409 用例全绿 |
 | V2.1 修订 | 2026-11-03 | 新增 FE-19 域名分发系统（§0 状态行 + §5 完整需求/验收 + §13.2 Secrets 增补）：成员自助三级/四级域名申请、泛域名 R2 应用直达（deploy_app 零配置域名）、Cloudflare DNS 自动同步（pending/retry 兜底）；代码已于 2026-10-15 上线，待 `*` 泛 DNS 记录与 CF secrets 配置后实测 |
+| V2.1 修订 | 2026-11-03 二更 | FE-19 配置收口：CF_API_TOKEN/CF_ZONE_ID secrets 写入、`*` 泛 DNS 记录生效；修复 assets 层吞根路径（wrangler.jsonc `run_worker_first: true`，否则子域名 `/` 被资产层直接返回门户 index.html 绕开 Host 路由）；应用直达/404 引导/门户无回归实测通过，剩登录态申请一单端到端实测 |
 
 ### 11.2 变更流程
 
