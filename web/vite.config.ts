@@ -33,6 +33,7 @@ const BUILTIN_APP_META: Record<string, { group: 'core' | 'standalone'; title: st
   drawing: { group: 'standalone', title: '机械图纸审批', desc: '图纸提交 · 审批流转', icon: '📏' },
   'season-goals': { group: 'standalone', title: '赛季目标管理', desc: '目标 · 关键结果 · 完成度跟踪', icon: '🎯' },
   'task-schedule': { group: 'standalone', title: '任务排期', desc: '任务计划 · 排期甘特 · 进度', icon: '🗓️' },
+  k1: { group: 'standalone', title: 'K1 Dashboard', desc: '设备状态 · 温度趋势 · 打印历史 · 床网数据', icon: '🖨️' },
 }
 const BUILTIN_APP_ORDER = Object.keys(BUILTIN_APP_META)
 

@@ -82,5 +82,12 @@
     "desc": "任务计划 · 排期甘特 · 进度",
     "icon": "🗓️",
     "group": "standalone"
+  },
+  {
+    "name": "k1",
+    "title": "K1 Dashboard",
+    "desc": "设备状态 · 温度趋势 · 打印历史 · 床网数据",
+    "icon": "🖨️",
+    "group": "standalone"
   }
 ]
