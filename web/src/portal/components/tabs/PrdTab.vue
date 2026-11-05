@@ -25,6 +25,7 @@ function subList(c: any) {
 // PRD 文档库：docs/ 下全部 PRD 在线阅读（原文同步自 docs/*.md → public/docs/prd/）
 // html: true 的条目为独立 HTML 图页（marked 不适用），经 iframe 嵌入阅读器
 const PRD_DOCS = [
+  { slug: 'brand-strategy-ecosystem-v1.0', title: '品牌战略与生态用户心智占领 PRD', version: 'V1.0', date: '2026-11-06', desc: 'NEC 主品牌与常州工 NEC 统一口径：真实工程实践的开源入口，覆盖生态人群、证据体系、90 天战役、MEEU 指标与开放治理' },
   { slug: 'team-ai-platform-v2.1',       title: '团队 AI 中台 PRD',              version: 'V2.1', date: '2026-10-16', desc: '中台总纲：M1 地基 / M2 资产与智能 / M3 个性化与自动化 / M4 业务流程域，FE-01 ~ FE-18 需求全景（上方看板的数据来源）' },
   { slug: 'approval-notification-v1.1',  title: '审批与通知中心 PRD',            version: 'V1.1', date: '2026-10-12', desc: '报销 / 机械图纸 / 硬件采购领用 / 合规四条流程，流程即配置的 Plan B 审批引擎' },
   { slug: 'approval-notification-v1.2',  title: '审批与通知中心 PRD（缺口补齐）', version: 'V1.2', date: '2026-10-14', desc: '台账联动、合规申请页、审批时效治理、待办 T-1 标红、邮件通道（飞书邮箱）' },
