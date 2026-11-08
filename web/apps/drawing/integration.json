@@ -1,0 +1,12 @@
+{
+  "level": "B",
+  "owner": "NEC 机械组",
+  "dataSource": "旧 approvals 轻审批底表",
+  "businessId": "MECH-<YYYY>-<4位序号>",
+  "apis": ["/api/approvals/*"],
+  "cacheTtl": "待办 5 分钟",
+  "status": "declared",
+  "evidence": [],
+  "notes": "旧轻审批线已废弃，新增能力进入 drawing-review",
+  "deprecated": true
+}

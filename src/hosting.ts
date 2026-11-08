@@ -10,6 +10,7 @@ import { KV_KEYS } from "./shared/kv-keys";
 import { resolveSession } from "./shared/session";
 import { resolveUserRole } from "./auth/role";
 import { domainZone } from "./domains/service";
+import { validateAppIntegration, type AppIntegration } from "./shared/app-integration";
 
 /** 应用广场条目（KV key: apps:index） */
 export interface AppEntry {
@@ -24,6 +25,7 @@ export interface AppEntry {
   external?: boolean;
   /** 一句话描述（应用广场卡片展示；发布时建议必填） */
   description?: string;
+  integration?: AppIntegration | null;
 }
 
 /** Skill 中心条目（KV key: skills:index） */
@@ -218,6 +220,7 @@ export interface BuiltinManifestEntry {
   icon?: string;
   /** core=核心流程 standalone=独立应用 */
   group?: string;
+  integration?: AppIntegration | null;
 }
 
 /** /api/apps 输出条目：在注册表 AppEntry 之上标注来源与双版本分歧 */
@@ -253,6 +256,7 @@ export async function readBuiltinManifest(env: Env, origin: string): Promise<Bui
         desc: e.desc ? String(e.desc) : undefined,
         icon: e.icon ? String(e.icon) : undefined,
         group: e.group ? String(e.group) : undefined,
+        integration: e.integration == null ? null : validateAppIntegration(e.integration, name),
       });
     }
     return out;
@@ -284,6 +288,7 @@ export async function listPortalApps(env: Env, request: Request, ctx?: Execution
     source: "builtin",
     group: b.group,
     icon: b.icon,
+    integration: b.integration ?? null,
   }));
   const registryEntries: PortalAppEntry[] = registered.map((a) => {
     const shadows = !a.external && builtinNames.has(a.name) ? true : undefined;
@@ -293,6 +298,7 @@ export async function listPortalApps(env: Env, request: Request, ctx?: Execution
       url: shadows ? `https://${a.name}.${domainZone(env)}/` : a.url,
       source: a.external ? "external" : "r2",
       shadows,
+      integration: a.integration ?? null,
     };
   });
   return [...builtinEntries, ...registryEntries];

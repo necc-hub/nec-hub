@@ -1,0 +1,14 @@
+{
+  "level": "B",
+  "owner": "NEC 电控组",
+  "dataSource": "飞书 Base 硬件评审主表及子表 + approvals 审批引擎",
+  "businessId": "HR-<YYYY>-<4位序号>",
+  "apis": ["/api/hardware-review/*", "/api/approvals/*", "/api/todos"],
+  "cacheTtl": "待办 5 分钟",
+  "status": "partial",
+  "evidence": [
+    { "type": "test", "ref": "src/__tests__/hardware-review.test.ts", "date": "2026-11-06" },
+    { "type": "test", "ref": "src/__tests__/hardware-review-notify.test.ts", "date": "2026-11-06" }
+  ],
+  "notes": "真实硬件评审流程待验收"
+}

@@ -4,90 +4,320 @@
     "title": "新增机图纸评审",
     "desc": "提交 · 评审 · BOM · 排期 · 采购",
     "icon": "📐",
-    "group": "core"
+    "group": "core",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 机械组",
+      "dataSource": "飞书 Base 图纸评审主表及子表 + approvals 审批引擎",
+      "businessId": "DR-<YYYY>-<4位序号>",
+      "apis": [
+        "/api/drawing-review/*",
+        "/api/approvals/*",
+        "/api/todos"
+      ],
+      "cacheTtl": "待办 5 分钟",
+      "status": "partial",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "src/__tests__/drawing-review-e2e.test.ts",
+          "date": "2026-11-06"
+        }
+      ],
+      "notes": "生产跨应用闭环待验收"
+    }
   },
   {
     "name": "hardware-review",
     "title": "硬件评审流程",
     "desc": "选型 · 评审 · 立项 · 归档",
     "icon": "🔧",
-    "group": "core"
+    "group": "core",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 电控组",
+      "dataSource": "飞书 Base 硬件评审主表及子表 + approvals 审批引擎",
+      "businessId": "HR-<YYYY>-<4位序号>",
+      "apis": [
+        "/api/hardware-review/*",
+        "/api/approvals/*",
+        "/api/todos"
+      ],
+      "cacheTtl": "待办 5 分钟",
+      "status": "partial",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "src/__tests__/hardware-review.test.ts",
+          "date": "2026-11-06"
+        },
+        {
+          "type": "test",
+          "ref": "src/__tests__/hardware-review-notify.test.ts",
+          "date": "2026-11-06"
+        }
+      ],
+      "notes": "真实硬件评审流程待验收"
+    }
   },
   {
     "name": "mech-review-6014",
     "title": "6014 电机机械评审",
     "desc": "评审纪要 · 转接板草图 · DXF/CSV",
     "icon": "⚙️",
-    "group": "core"
+    "group": "core",
+    "integration": {
+      "level": "P",
+      "owner": "NEC 机械组",
+      "dataSource": "public/apps/mech-review-6014/ 静态纪要、DXF、CSV 与图片",
+      "apis": [],
+      "cacheTtl": "静态构建产物",
+      "status": "declared",
+      "evidence": [],
+      "notes": "6014 评审资料静态归档，不另建业务流程"
+    }
   },
   {
     "name": "scoring",
     "title": "NEC 评分看板",
     "desc": "赛事成绩 · 评分记录 · 排名",
     "icon": "🏆",
-    "group": "core"
+    "group": "core",
+    "integration": {
+      "level": "P",
+      "owner": "NEC 平台维护者",
+      "dataSource": "web/src/apps/scoring/data.ts 静态评分资料",
+      "apis": [],
+      "cacheTtl": "静态构建产物",
+      "status": "declared",
+      "evidence": [],
+      "notes": "只读评分资料，无实时写入或生产验收证据"
+    }
   },
   {
     "name": "contract-signing",
     "title": "协议签署 OA 审批",
     "desc": "合同提交 · 会签审批 · 归档",
     "icon": "📝",
-    "group": "core"
+    "group": "core",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 运营组",
+      "dataSource": "飞书 Base 合同主表、评论、事件 + approvals 审批引擎",
+      "businessId": "HT-<YYYY>-<3位序号>",
+      "apis": [
+        "/api/contract-approval/*",
+        "/api/approvals/*",
+        "/api/todos"
+      ],
+      "cacheTtl": "待办 5 分钟",
+      "status": "partial",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "src/contract-approval/__tests__/contract-approval.test.ts",
+          "date": "2026-11-06"
+        }
+      ],
+      "notes": "生产合同会签闭环待验收"
+    }
   },
   {
     "name": "domains",
     "title": "域名分发系统",
     "desc": "子域名申请 · 分发管理",
     "icon": "🌐",
-    "group": "core"
+    "group": "core",
+    "integration": {
+      "level": "I",
+      "owner": "NEC 平台维护者",
+      "dataSource": "KV domains:rec:<subdomain> + Cloudflare DNS",
+      "businessId": "<subdomain>.newenergycoder.club",
+      "apis": [
+        "/api/domains/*"
+      ],
+      "cacheTtl": "域名记录按现有短缓存",
+      "status": "partial",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "src/__tests__/domains.test.ts",
+          "date": "2026-11-06"
+        }
+      ],
+      "notes": "登录态生产申请与 DNS 自动创建待验收"
+    }
   },
   {
     "name": "reimburse",
     "title": "报销助手",
     "desc": "费用报销单 · 发票附件 · 提交审批",
     "icon": "💰",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 平台维护者",
+      "dataSource": "飞书 Base 报销审批状态 + D1 整单快照 + R2 receipts 附件",
+      "businessId": "BX-<YYYY>-<4位序号>",
+      "apis": [
+        "/api/erp/reimburse/*",
+        "/api/approvals/*",
+        "/api/todos"
+      ],
+      "cacheTtl": "D1 实时读取；待办 5 分钟；看板 30 分钟",
+      "status": "partial",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "src/__tests__/erp-reimburse.test.ts",
+          "date": "2026-11-06"
+        }
+      ],
+      "notes": "生产报销审批与支付闭环待验收"
+    }
   },
   {
     "name": "compliance",
     "title": "合规申请",
     "desc": "合规事项提交 · 审批 · 归档",
     "icon": "🛡️",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 运营组",
+      "dataSource": "飞书 Base 合规审批表 + approvals 审批引擎",
+      "businessId": "CP-<YYYY>-<4位序号>",
+      "apis": [
+        "/api/approvals/*",
+        "/api/todos"
+      ],
+      "cacheTtl": "待办 5 分钟",
+      "status": "declared",
+      "evidence": [],
+      "notes": "暂无足够的独立业务闭环证据"
+    }
   },
   {
     "name": "cla-sign",
     "title": "CLA 协议签署",
     "desc": "开源贡献协议 · 签署 · PDF 证书",
     "icon": "✍️",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "I",
+      "owner": "NEC 开源社区",
+      "dataSource": "KV cla:sig:* 与 cla:oid:*",
+      "businessId": "飞书 open_id；匿名历史路径为 GitHub 用户名",
+      "apis": [
+        "/api/cla",
+        "/api/cla/status",
+        "/api/cla/sign"
+      ],
+      "cacheTtl": "签署状态实时读取",
+      "status": "declared",
+      "evidence": [],
+      "notes": "当前允许匿名签署，与 I 级身份打通目标存在冲突"
+    }
   },
   {
     "name": "drawing",
     "title": "机械图纸审批",
     "desc": "图纸提交 · 审批流转",
     "icon": "📏",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 机械组",
+      "dataSource": "旧 approvals 轻审批底表",
+      "businessId": "MECH-<YYYY>-<4位序号>",
+      "apis": [
+        "/api/approvals/*"
+      ],
+      "cacheTtl": "待办 5 分钟",
+      "status": "declared",
+      "evidence": [],
+      "notes": "旧轻审批线已废弃，新增能力进入 drawing-review",
+      "deprecated": true
+    }
   },
   {
     "name": "season-goals",
     "title": "赛季目标管理",
     "desc": "目标 · 关键结果 · 完成度跟踪",
     "icon": "🎯",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 队长与各组长",
+      "dataSource": "飞书 Base goals、collect、tasks 表",
+      "businessId": "goals.record_id",
+      "apis": [
+        "/api/season-goals/*",
+        "/api/dashboard",
+        "/api/my-tasks"
+      ],
+      "cacheTtl": "看板最长 30 分钟；指定写操作主动失效",
+      "status": "partial",
+      "evidence": [
+        {
+          "type": "test",
+          "ref": "src/season-goals/__tests__/season-goals.test.ts",
+          "date": "2026-11-06"
+        }
+      ],
+      "notes": "目标与任务的稳定跨应用关联仍需补齐"
+    }
   },
   {
     "name": "task-schedule",
     "title": "任务排期",
     "desc": "任务计划 · 排期甘特 · 进度",
     "icon": "🗓️",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "B",
+      "owner": "NEC 平台维护者",
+      "dataSource": "浏览器 localStorage nec-taskto-v1",
+      "businessId": "本地 uid()（仅浏览器内稳定）",
+      "apis": [],
+      "cacheTtl": "仅本地持久化",
+      "status": "declared",
+      "evidence": [],
+      "notes": "尚未接入任务服务，跨应用关联未实现"
+    }
+  },
+  {
+    "name": "ress-solution",
+    "title": "StarCharge RESS 场景方案",
+    "desc": "场景视频 · 产品包 BOM · 配置导出",
+    "icon": "🔋",
+    "group": "standalone",
+    "integration": {
+      "level": "P",
+      "owner": "NEC 平台维护者",
+      "dataSource": "web/src/apps/ress-solution/data.ts + public/assets/starcharge-ress/ 静态资产",
+      "apis": [],
+      "cacheTtl": "静态构建产物",
+      "status": "declared",
+      "evidence": [],
+      "notes": "本地预览与客户端导出，不接 LibTV 实时服务"
+    }
   },
   {
     "name": "k1",
     "title": "K1 Dashboard",
     "desc": "设备状态 · 温度趋势 · 打印历史 · 床网数据",
     "icon": "🖨️",
-    "group": "standalone"
+    "group": "standalone",
+    "integration": {
+      "level": "P",
+      "owner": "NEC Hardware",
+      "dataSource": "web/apps/k1/ 静态页与 2026-11-03 只读验收截图",
+      "apis": [],
+      "cacheTtl": "静态构建产物",
+      "status": "declared",
+      "evidence": [],
+      "notes": "不连接打印机、不创建内网 WebSocket、不提供远程控制"
+    }
   }
 ]

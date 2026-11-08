@@ -1,0 +1,13 @@
+{
+  "level": "B",
+  "owner": "NEC 平台维护者",
+  "dataSource": "飞书 Base 报销审批状态 + D1 整单快照 + R2 receipts 附件",
+  "businessId": "BX-<YYYY>-<4位序号>",
+  "apis": ["/api/erp/reimburse/*", "/api/approvals/*", "/api/todos"],
+  "cacheTtl": "D1 实时读取；待办 5 分钟；看板 30 分钟",
+  "status": "partial",
+  "evidence": [
+    { "type": "test", "ref": "src/__tests__/erp-reimburse.test.ts", "date": "2026-11-06" }
+  ],
+  "notes": "生产报销审批与支付闭环待验收"
+}

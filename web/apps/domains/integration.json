@@ -1,0 +1,13 @@
+{
+  "level": "I",
+  "owner": "NEC 平台维护者",
+  "dataSource": "KV domains:rec:<subdomain> + Cloudflare DNS",
+  "businessId": "<subdomain>.newenergycoder.club",
+  "apis": ["/api/domains/*"],
+  "cacheTtl": "域名记录按现有短缓存",
+  "status": "partial",
+  "evidence": [
+    { "type": "test", "ref": "src/__tests__/domains.test.ts", "date": "2026-11-06" }
+  ],
+  "notes": "登录态生产申请与 DNS 自动创建待验收"
+}

@@ -1,0 +1,10 @@
+{
+  "level": "P",
+  "owner": "NEC 平台维护者",
+  "dataSource": "web/src/apps/scoring/data.ts 静态评分资料",
+  "apis": [],
+  "cacheTtl": "静态构建产物",
+  "status": "declared",
+  "evidence": [],
+  "notes": "只读评分资料，无实时写入或生产验收证据"
+}

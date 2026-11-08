@@ -1,0 +1,10 @@
+{
+  "level": "P",
+  "owner": "NEC 平台维护者",
+  "dataSource": "web/src/apps/ress-solution/data.ts + public/assets/starcharge-ress/ 静态资产",
+  "apis": [],
+  "cacheTtl": "静态构建产物",
+  "status": "declared",
+  "evidence": [],
+  "notes": "本地预览与客户端导出，不接 LibTV 实时服务"
+}

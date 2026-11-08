@@ -1,0 +1,11 @@
+{
+  "level": "B",
+  "owner": "NEC 平台维护者",
+  "dataSource": "浏览器 localStorage nec-taskto-v1",
+  "businessId": "本地 uid()（仅浏览器内稳定）",
+  "apis": [],
+  "cacheTtl": "仅本地持久化",
+  "status": "declared",
+  "evidence": [],
+  "notes": "尚未接入任务服务，跨应用关联未实现"
+}

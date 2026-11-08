@@ -1,10 +1,9 @@
 /**
  * MCP (JSON-RPC over streamable HTTP) — 端点与 tools/call 分发
  *
- * 鉴权决策点保持在 handleMcp 入口：配置 MCP_TOKEN 时所有方法（含 tools/list）
- * 都需 Authorization: Bearer 通过 timingSafeEqual 比对；未配置时降级为只读模式，
- * tools/call 仅放行注册表 readOnly 标记派生的只读集合，写工具返回 JSON-RPC 错误。
- * 工具清单/schema/实现/instructions 的单一来源在 ./registry 与 ./instructions。
+ * 协议元数据可公开；业务工具按 readOnly 与管理/用户权限分层。
+ * hasMcpToken 只在 Bearer 与 MCP_TOKEN 成功匹配时为真，readOnly 不代表公开或管理员。
+ * 无效 Bearer 一律 401，写工具无管理身份时 fail-closed。
  */
 
 import { json } from "../shared/http";
@@ -28,16 +27,13 @@ async function timingSafeEqual(a: string, b: string): Promise<boolean> {
 }
 
 export async function handleMcp(request: Request, env: Env): Promise<Response> {
-  let hasMcpToken = false;
-  if (env.MCP_TOKEN) {
-    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
-    hasMcpToken = await timingSafeEqual(token, env.MCP_TOKEN);
-    if (!hasMcpToken) {
-      return json({ error: "unauthorized" }, 401);
-    }
-  } else {
-    hasMcpToken = true;
+  const authorization = request.headers.get("authorization");
+  const supplied = authorization?.replace(/^Bearer\s+/i, "") ?? "";
+  const hasMcpToken = env.MCP_TOKEN ? await timingSafeEqual(supplied, env.MCP_TOKEN) : false;
+  if (authorization && !hasMcpToken) {
+    return json({ error: "unauthorized" }, 401);
   }
+
   let msg: {
     jsonrpc?: string;
     id?: string | number | null;
@@ -80,17 +76,17 @@ async function callTool(
 ): Promise<Response> {
   const name = params.name as string;
   const args = (params.arguments ?? {}) as Record<string, unknown>;
-  if (!env.MCP_TOKEN && !READONLY_TOOLS.has(name)) {
-    console.warn(`[mcp] 未配置 MCP_TOKEN，拒绝写工具调用: ${name}`);
-    return rpcError(
-      id,
-      -32000,
-      `工具 ${name} 为写操作：未配置 MCP_TOKEN 时仅放行只读工具（${[...READONLY_TOOLS].join("/")}），请在 Worker 环境变量配置 MCP_TOKEN 后重试`,
-    );
-  }
   const tool = findTool(name);
   if (!tool) {
     return rpcError(id, -32602, `Unknown tool: ${name}`);
+  }
+  if (!hasMcpToken && !READONLY_TOOLS.has(name)) {
+    console.warn(`[mcp] 非管理端拒绝写工具调用: ${name}`);
+    return rpcError(
+      id,
+      -32000,
+      `工具 ${name} 为写操作：需要有效 MCP_TOKEN；只读工具仍按各自用户权限执行`,
+    );
   }
   try {
     return rpc(id, await tool.impl(args, env, { request, hasMcpToken }));

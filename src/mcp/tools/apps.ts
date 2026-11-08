@@ -5,6 +5,7 @@
 import { domainZone } from "../../domains/service";
 import { readBuiltinManifest, readIndex, upsertIndex, type AppEntry } from "../../hosting";
 import { KV_KEYS } from "../../shared/kv-keys";
+import { APP_INTEGRATION_INPUT_SCHEMA, validateAppIntegration, type AppIntegration } from "../../shared/app-integration";
 import { NAME_RE, type McpToolDef } from "./shared";
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -19,6 +20,7 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
   if (!NAME_RE.test(appName)) {
     throw new Error("应用名不合法：仅允许小写字母/数字/连字符（2-41 字符），如 inventory-check");
   }
+  const integration = validateAppIntegration(args.integration, appName);
   const files = (args.files ?? []) as Array<{ path?: string; text?: string; base64?: string }>;
   if (!Array.isArray(files) || files.length === 0) throw new Error("files 不能为空");
   if (files.length > 100) throw new Error("单次最多上传 100 个文件");
@@ -67,6 +69,7 @@ export async function toolDeployApp(args: Record<string, unknown>, env: Env, req
     updatedAt: new Date().toISOString(),
     url: `${origin}/apps/${appName}/`,
     description: args.description ? String(args.description) : undefined,
+    integration,
   };
   const list = await upsertIndex(env, KV_KEYS.appsIndex, entry);
   // 同名内置应用检测：/apps/<name>/ 由平台资产层直接服务仓内版本，R2 版只在独立域名可达——双版本分叉需显式警告
@@ -91,6 +94,7 @@ export async function toolRegisterApp(args: Record<string, unknown>, env: Env) {
   }
   const url = String(args.url ?? "");
   if (!/^https?:\/\/.+/.test(url)) throw new Error("url 必须是 http(s) 完整链接");
+  const integration = validateAppIntegration(args.integration, appName);
   const entry: AppEntry = {
     name: appName,
     title: String(args.title ?? appName),
@@ -101,6 +105,7 @@ export async function toolRegisterApp(args: Record<string, unknown>, env: Env) {
     url,
     external: true,
     description: args.description ? String(args.description) : undefined,
+    integration,
   };
   const list = await upsertIndex(env, KV_KEYS.appsIndex, entry);
   return {
@@ -175,9 +180,23 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
     }),
   );
   const plan = entries.filter((e) => e !== null);
+  const rawDeclarations = args.integrations ?? {};
+  if (!rawDeclarations || typeof rawDeclarations !== "object" || Array.isArray(rawDeclarations)) {
+    throw new Error("integrations 必须是按应用名 keyed 的对象");
+  }
+  const declarations = rawDeclarations as Record<string, unknown>;
+  const pending = plan.filter((p) => p.action === "registered" || p.action === "would register");
+  const validated = new Map<string, AppIntegration>();
+  for (const p of pending) {
+    try {
+      validated.set(p.name, validateAppIntegration(declarations[p.name], p.name));
+    } catch (err) {
+      if (confirm) throw err;
+      p.action = `blocked: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
   if (confirm) {
-    for (const p of plan) {
-      if (p.action !== "registered") continue;
+    for (const p of pending) {
       await upsertIndex(env, KV_KEYS.appsIndex, {
         name: p.name,
         title: p.name,
@@ -187,6 +206,7 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
         updatedAt: new Date().toISOString(),
         url: p.url,
         external: true,
+        integration: validated.get(p.name)!,
       });
     }
   }
@@ -206,7 +226,7 @@ export async function toolSyncVercel(args: Record<string, unknown>, env: Env) {
 export const deployAppTool: McpToolDef = {
   name: "deploy_app",
   description:
-    "把一个 Vibe Coding 的静态应用（单页 HTML 或多文件静态站）发布到 NEC 团队中台应用广场。文件上传到团队 R2，访问路径为 /apps/<name>/。提交前必须满足：① name 匹配 ^[a-z0-9][a-z0-9-]{1,40}$（小写字母/数字/连字符，须以小写字母或数字开头，2-41 字符）；② files 必须包含入口文件 index.html，单次最多 100 个文件；③ 文本文件（HTML/CSS/JS/JSON 等）用 text 字段传 UTF-8 内容，图片/字体等二进制用 base64 字段，两者二选一；④ 文件 path 为相对路径，禁止包含 .. 或以 / 开头；⑤ 同名应用重复部署即覆盖更新，建议递增 version；⑥ 建议显式填写 title/author，便于应用广场展示。",
+    "把一个 Vibe Coding 的静态应用发布到 NEC 团队应用广场。新上架和更新必须传 integration（P/I/B/D、负责人、权威数据源、业务 ID、API、缓存与证据），verified 必须有带 summary 的 production 证据。files 须含 index.html，文本用 text、二进制用 base64；缺声明或声明非法会在 R2/KV 副作用前拒绝。历史未声明应用保留入口但不视为已打通。",
   inputSchema: {
     type: "object",
     properties: {
@@ -219,6 +239,7 @@ export const deployAppTool: McpToolDef = {
       author: { type: "string", description: "作者（队员姓名）；缺省显示「未知」" },
       visibility: { type: "string", description: "可见范围：all 或组别名，默认 all" },
       version: { type: "string", description: "版本号，默认 0.1.0；覆盖更新时建议递增" },
+      integration: APP_INTEGRATION_INPUT_SCHEMA,
       files: {
         type: "array",
         description: "静态文件列表（1-100 个），必须包含入口 index.html",
@@ -236,7 +257,7 @@ export const deployAppTool: McpToolDef = {
         },
       },
     },
-    required: ["name", "files"],
+    required: ["name", "files", "integration"],
   },
   impl: (args, env, ctx) => toolDeployApp(args, env, ctx.request),
 };
@@ -244,7 +265,7 @@ export const deployAppTool: McpToolDef = {
 export const registerAppTool: McpToolDef = {
   name: "register_app",
   description:
-    "把一个已经部署在其他地方的 Web 应用（外部链接）登记到 NEC 团队应用广场。适用于已有独立域名的应用，无需上传文件。",
+    "登记外部 Web 应用链接。新登记和更新必须传 integration；登记入口不会自动完成 SSO、权限或业务打通。缺声明或声明非法会在 KV 写入前拒绝，verified 必须有带 summary 的 production 证据。",
   inputSchema: {
     type: "object",
     properties: {
@@ -254,8 +275,9 @@ export const registerAppTool: McpToolDef = {
       url: { type: "string", description: "应用的完整外部链接，https://..." },
       visibility: { type: "string", description: "可见范围：all 或组别名，默认 all" },
       version: { type: "string", description: "版本号，默认 1.0.0" },
+      integration: APP_INTEGRATION_INPUT_SCHEMA,
     },
-    required: ["name", "url"],
+    required: ["name", "url", "integration"],
   },
   impl: (args, env) => toolRegisterApp(args, env),
 };
@@ -263,13 +285,14 @@ export const registerAppTool: McpToolDef = {
 export const syncVercelTool: McpToolDef = {
   name: "sync_vercel",
   description:
-    "从 Vercel 团队空间自动发现项目并登记到应用广场（外链）。默认只预览差异，confirm=true 才实际写入。需在 Worker 配置 VERCEL_TOKEN。",
+    "从 Vercel 团队空间自动发现项目并登记。默认只预览差异，confirm=true 才实际写入，需 VERCEL_TOKEN。通过 integrations 按应用名提供 integration 并整批预检；任一缺失或非法则整批不写，dry-run 会显示阻断原因。",
   inputSchema: {
     type: "object",
     properties: {
       confirm: { type: "boolean", description: "true 时实际写入注册表；缺省只预览" },
       exclude: { type: "array", items: { type: "string" }, description: "额外排除的项目名" },
       team: { type: "string", description: "Vercel 团队 slug，默认 necc" },
+      integrations: { type: "object", description: "按应用名提供集成声明；confirm=true 前全部预检", additionalProperties: APP_INTEGRATION_INPUT_SCHEMA },
     },
   },
   impl: (args, env) => toolSyncVercel(args, env),

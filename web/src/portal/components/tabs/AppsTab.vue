@@ -3,6 +3,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { PUBLISH_PROMPT } from '@shared/prompts'
 import { copyText } from '@shared/api'
+import IntegrationBadge from '@shared/ui/IntegrationBadge.vue'
 
 const apps = ref<any[] | null>(null)
 const showPrompt = ref(false)
@@ -40,6 +41,7 @@ const communityApps = computed(() => (apps.value ?? []).filter(a => a.source !==
               <p class="text-xs text-gray-500">{{ a.description }}</p>
             </div>
           </div>
+          <IntegrationBadge :integration="a.integration" class="mt-3" />
         </a>
       </div>
     </div>
@@ -56,6 +58,7 @@ const communityApps = computed(() => (apps.value ?? []).filter(a => a.source !==
               <p class="text-xs text-gray-500">{{ a.description }}</p>
             </div>
           </div>
+          <IntegrationBadge :integration="a.integration" class="mt-3" />
         </a>
       </div>
     </div>
@@ -75,6 +78,7 @@ const communityApps = computed(() => (apps.value ?? []).filter(a => a.source !==
         </div>
         <p class="text-xs text-gray-500 mt-1">{{ a.name }} · {{ a.author }}</p>
         <p class="text-xs text-gray-400 mt-2">更新于 {{ a.updatedAt ? new Date(a.updatedAt).toLocaleString('zh-CN') : '—' }}</p>
+        <div class="mt-3"><IntegrationBadge :integration="a.integration" /></div>
         <p v-if="a.shadows" class="mt-2 inline-block text-xs px-1.5 py-0.5 rounded" style="background:#FEF3C7;color:#B45309">⚠ 双版本：本卡片为 R2 独立域名版，/apps/ 路径为仓内版</p>
       </a>
     </div>

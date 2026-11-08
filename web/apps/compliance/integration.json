@@ -1,0 +1,11 @@
+{
+  "level": "B",
+  "owner": "NEC 运营组",
+  "dataSource": "飞书 Base 合规审批表 + approvals 审批引擎",
+  "businessId": "CP-<YYYY>-<4位序号>",
+  "apis": ["/api/approvals/*", "/api/todos"],
+  "cacheTtl": "待办 5 分钟",
+  "status": "declared",
+  "evidence": [],
+  "notes": "暂无足够的独立业务闭环证据"
+}

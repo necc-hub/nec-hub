@@ -1,0 +1,10 @@
+{
+  "level": "P",
+  "owner": "NEC Hardware",
+  "dataSource": "web/apps/k1/ 静态页与 2026-11-03 只读验收截图",
+  "apis": [],
+  "cacheTtl": "静态构建产物",
+  "status": "declared",
+  "evidence": [],
+  "notes": "不连接打印机、不创建内网 WebSocket、不提供远程控制"
+}

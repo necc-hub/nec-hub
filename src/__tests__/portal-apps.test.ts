@@ -5,9 +5,11 @@ import { describe, expect, it, vi } from "vitest";
 import { listPortalApps, type AppEntry } from "../hosting";
 import { KV_KEYS } from "../shared/kv-keys";
 import { createMockEnv, type MockEnv } from "./mock-env";
+import { validIntegration } from "./app-integration-fixtures";
 
+const BUILTIN_INTEGRATION = validIntegration({ level: "P", businessId: undefined, apis: [], status: "declared", evidence: [] });
 const BUILTIN = [
-  { name: "reimburse", title: "报销助手", desc: "费用报销单", icon: "💰", group: "standalone" },
+  { name: "reimburse", title: "报销助手", desc: "费用报销单", icon: "💰", group: "standalone", integration: BUILTIN_INTEGRATION },
   { name: "drawing-review", title: "新增机图纸评审", desc: "提交 · 评审", icon: "📐", group: "core" },
 ];
 
@@ -43,8 +45,11 @@ describe("listPortalApps", () => {
     expect(apps[0].source).toBe("builtin");
     expect(apps[0].group).toBe("standalone");
     expect(apps[0].icon).toBe("💰");
+    expect(apps[0].integration).toEqual(BUILTIN_INTEGRATION);
+    expect(apps[1].integration).toBeNull();
     expect(apps.map((a) => a.name)).toContain("inventory-check");
     expect(apps.find((a) => a.name === "inventory-check")?.source).toBe("r2");
+    expect(apps.find((a) => a.name === "inventory-check")?.integration).toBeNull();
     expect(apps.find((a) => a.name === "mes-warehouse")?.source).toBe("external");
   });
 

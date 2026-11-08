@@ -17,12 +17,13 @@ import {
 } from "../mcp/implementations";
 import { toolConfigValidateRules } from "../validation/handlers";
 import { createMockEnv } from "./mock-env";
+import { validIntegration } from "./app-integration-fixtures";
 
 describe("管理工具鉴权闸门（fail-closed）", () => {
   it("未持 MCP_TOKEN 时全部拒绝，且不产生任何副作用", async () => {
     const env = createMockEnv();
     const req = new Request("https://hub.example.com/mcp");
-    await expect(toolDeployApp({ name: "demo", files: [{ path: "index.html", text: "x" }] }, env as never, false, req)).rejects.toThrow("MCP_TOKEN");
+    await expect(toolDeployApp({ name: "demo", integration: validIntegration(), files: [{ path: "index.html", text: "x" }] }, env as never, false, req)).rejects.toThrow("MCP_TOKEN");
     await expect(toolRegisterApp({ name: "demo", url: "https://x" }, env as never, false)).rejects.toThrow("MCP_TOKEN");
     await expect(toolSyncVercel({}, env as never, false)).rejects.toThrow("MCP_TOKEN");
     await expect(toolImportSkills({ skills: [{ name: "s1", url: "https://x" }] }, env as never, false)).rejects.toThrow("MCP_TOKEN");
@@ -50,7 +51,7 @@ describe("deploy_app 上传限额", () => {
     const big = "a".repeat(2 * 1024 * 1024 + 1);
     await expect(
       toolDeployApp(
-        { name: "oversize", files: [{ path: "index.html", text: "x" }, { path: "big.js", text: big }] },
+        { name: "oversize", integration: validIntegration(), files: [{ path: "index.html", text: "x" }, { path: "big.js", text: big }] },
         env as never,
         true,
         new Request("https://hub.example.com/mcp"),
@@ -65,7 +66,7 @@ describe("deploy_app 上传限额", () => {
     const files = Array.from({ length: 6 }, (_, i) => ({ path: `asset-${i}.js`, text: chunk }));
     files.push({ path: "index.html", text: "<h1>ok</h1>" });
     await expect(
-      toolDeployApp({ name: "grand-total", files }, env as never, true, new Request("https://hub.example.com/mcp")),
+      toolDeployApp({ name: "grand-total", integration: validIntegration(), files }, env as never, true, new Request("https://hub.example.com/mcp")),
     ).rejects.toThrow("总大小超过限制");
     expect(env.APPS_BUCKET.put).not.toHaveBeenCalled();
   });
@@ -73,7 +74,7 @@ describe("deploy_app 上传限额", () => {
   it("限额内的小应用正常上架", async () => {
     const env = createMockEnv();
     const res = await toolDeployApp(
-      { name: "tiny-app", title: "小应用", files: [{ path: "index.html", text: "<h1>ok</h1>" }] },
+      { name: "tiny-app", title: "小应用", integration: validIntegration(), files: [{ path: "index.html", text: "<h1>ok</h1>" }] },
       env as never,
       true,
       new Request("https://hub.example.com/mcp"),

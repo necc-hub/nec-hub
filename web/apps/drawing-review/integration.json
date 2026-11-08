@@ -1,0 +1,13 @@
+{
+  "level": "B",
+  "owner": "NEC 机械组",
+  "dataSource": "飞书 Base 图纸评审主表及子表 + approvals 审批引擎",
+  "businessId": "DR-<YYYY>-<4位序号>",
+  "apis": ["/api/drawing-review/*", "/api/approvals/*", "/api/todos"],
+  "cacheTtl": "待办 5 分钟",
+  "status": "partial",
+  "evidence": [
+    { "type": "test", "ref": "src/__tests__/drawing-review-e2e.test.ts", "date": "2026-11-06" }
+  ],
+  "notes": "生产跨应用闭环待验收"
+}

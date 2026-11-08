@@ -9,15 +9,18 @@ export async function toolQueryBitable(args: Record<string, unknown>, env: Env, 
   if (!DASH_TABLES.includes(table)) {
     throw new Error("table 必须是 members | tasks | inventory | finance | goals 之一");
   }
-  // finance 表按角色受限：管理端（持 MCP_TOKEN）或持有效 user_token 且角色为队长/财务
-  if (table === "finance" && !hasMcpToken) {
+  // 非管理查询均需可确认的队员身份；finance 额外要求队长/财务。
+  if (!hasMcpToken) {
     const userToken = String(args.user_token ?? "").trim();
     if (!userToken) {
-      throw new Error("finance 表受限：请提供 user_token（飞书 user_access_token，角色需为队长/财务），或由配置了 MCP_TOKEN 的管理端调用");
+      throw new Error("query_bitable 需要 user_token，或由管理端携带 MCP_TOKEN 调用");
     }
-    const { openId } = await validateUserToken(userToken);
-    const role = await resolveUserRole(env, { name: "", open_id: openId });
-    if (!canSeeFinanceDetail(role)) {
+    const { openId, name } = await validateUserToken(userToken);
+    const role = await resolveUserRole(env, { name, open_id: openId });
+    if (!role.matched || role.role === "external") {
+      throw new Error("权限不足：队员名单无法确认当前用户身份");
+    }
+    if (table === "finance" && !canSeeFinanceDetail(role)) {
       throw new Error(`权限不足：finance 表仅队长/财务角色可查（当前角色：${role.role}）`);
     }
   }
@@ -67,7 +70,7 @@ export const queryBitableTool: McpToolDef = {
   name: "query_bitable",
   readOnly: true,
   description:
-    "只读查询飞书多维表格（队员名单/任务进度/物资台账/财务报销/赛季目标）。需先用 config_dashboard 配置 base 与 table_id，也可在调用时显式传 app_token/table_id 查询任意表格。finance 表受限：需管理端（MCP_TOKEN）或有效 user_token（角色为队长/财务）。",
+    "只读查询飞书多维表格（队员名单/任务进度/物资台账/财务报销/赛季目标）。非管理调用必须提供有效 user_token 且队员名单匹配；finance 表还需队长/财务角色。需先用 config_dashboard 配置 base 与 table_id，也可显式传 app_token/table_id。",
   inputSchema: {
     type: "object",
     properties: {
@@ -76,7 +79,7 @@ export const queryBitableTool: McpToolDef = {
       limit: { type: "number", description: "返回条数上限，默认 20，最大 100" },
       app_token: { type: "string", description: "可选：覆盖配置，直接指定多维表格 app_token" },
       table_id: { type: "string", description: "可选：覆盖配置，直接指定 table_id（tbl 开头）" },
-      user_token: { type: "string", description: "可选：飞书 user_access_token；查询 finance 表时必填（角色需为队长/财务）" },
+      user_token: { type: "string", description: "非管理查询必填：飞书 user_access_token；finance 表要求队长/财务角色" },
     },
     required: ["table"],
   },

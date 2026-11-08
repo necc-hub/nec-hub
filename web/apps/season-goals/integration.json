@@ -1,0 +1,13 @@
+{
+  "level": "B",
+  "owner": "NEC 队长与各组长",
+  "dataSource": "飞书 Base goals、collect、tasks 表",
+  "businessId": "goals.record_id",
+  "apis": ["/api/season-goals/*", "/api/dashboard", "/api/my-tasks"],
+  "cacheTtl": "看板最长 30 分钟；指定写操作主动失效",
+  "status": "partial",
+  "evidence": [
+    { "type": "test", "ref": "src/season-goals/__tests__/season-goals.test.ts", "date": "2026-11-06" }
+  ],
+  "notes": "目标与任务的稳定跨应用关联仍需补齐"
+}

@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { handleMcp } from "../mcp/handler";
 import { READONLY_TOOLS, TOOL_REGISTRY, TOOLS, findTool } from "../mcp/registry";
+import { KV_KEYS } from "../shared/kv-keys";
 
 const EXPECTED_TOOL_NAMES = [
   "deploy_app",
@@ -123,35 +124,59 @@ describe("handleMcp 协议行为", () => {
     expect(body.result.tools.map((t) => t.name)).toEqual(EXPECTED_TOOL_NAMES);
   });
 
-  it("未配置 MCP_TOKEN 降级：写工具拒绝、只读工具放行、未知工具报 Unknown tool", async () => {
-    const env = {} as Env;
+  it.each([{}, { MCP_TOKEN: "secret" }])("匿名 whoami 不再误报管理员", async (env) => {
+    const res = await handleMcp(
+      mcpReq({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "whoami", arguments: {} } }),
+      env as Env,
+    );
+    const body = (await res.json()) as { result: { isError?: boolean; content: Array<{ text: string }> } };
+    expect(body.result.isError).toBe(true);
+    expect(body.result.content[0].text).toContain("无法识别身份");
+    expect(body.result.content[0].text).not.toContain("MCP_TOKEN 持有者");
+  });
+
+  it("协议元数据公开，无管理 Bearer 时写工具 fail-closed", async () => {
+    const env = { MCP_TOKEN: "secret" } as Env;
+    const list = await handleMcp(mcpReq({ jsonrpc: "2.0", id: 4, method: "tools/list" }), env);
+    expect(list.status).toBe(200);
     const write = await handleMcp(
-      mcpReq({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "remove_docs", arguments: { ids: ["a"] } } }),
+      mcpReq({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "remove_docs", arguments: { ids: ["a"] } } }),
       env,
     );
     const writeBody = (await write.json()) as { error: { code: number; message: string } };
     expect(writeBody.error.code).toBe(-32000);
-    expect(writeBody.error.message).toContain("仅放行只读工具");
+    expect(writeBody.error.message).toContain("MCP_TOKEN");
+  });
 
-    const ro = await handleMcp(
-      mcpReq({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "whoami", arguments: {} } }),
-      env,
-    );
-    const roBody = (await ro.json()) as { result: { content: Array<{ text: string }> } };
-    expect(roBody.result.content[0].text).toContain("MCP_TOKEN 持有者");
+  it("有效 user_token 不被环境 MCP_TOKEN 配置阻断", async () => {
+    const previousFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({ code: 0, data: { open_id: "ou_user", name: "张三" } }));
+    try {
+      const env = {
+        MCP_TOKEN: "secret",
+        REGISTRY: {
+          get: async (key: string) => key === KV_KEYS.role("ou_user") ? { role: "队员", group: "机械组", matched: true } : null,
+          put: async () => {},
+          delete: async () => {},
+        },
+      } as unknown as Env;
+      const res = await handleMcp(
+        mcpReq({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "whoami", arguments: { user_token: "u-test" } } }),
+        env,
+      );
+      const body = (await res.json()) as { result: { content: Array<{ text: string }> } };
+      expect(body.result.content[0].text).toContain("张三");
+      expect(body.result.content[0].text).not.toContain("MCP_TOKEN 持有者");
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
 
-    const unknown = await handleMcp(
-      mcpReq({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "nope" } }),
-      { MCP_TOKEN: "secret" } as Env,
-    );
-    // 配置了 MCP_TOKEN 但请求未带 → 401
-    expect(unknown.status).toBe(401);
-
-    // Node 的 crypto.subtle 无 Workers 专有 timingSafeEqual，补桩后走鉴权通过路径
+  it("有效管理 Bearer 可调用，未知工具报 Unknown tool", async () => {
     (crypto.subtle as unknown as Record<string, unknown>).timingSafeEqual ??= (a: Uint8Array, b: Uint8Array) =>
       a.length === b.length && a.every((v, i) => v === b[i]);
     const authed = await handleMcp(
-      mcpReq({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "nope" } }, "secret"),
+      mcpReq({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "nope" } }, "secret"),
       { MCP_TOKEN: "secret" } as Env,
     );
     const authedBody = (await authed.json()) as { error: { code: number; message: string } };

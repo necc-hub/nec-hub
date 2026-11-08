@@ -15,10 +15,17 @@ export const JOIN_PROMPT = `🚀 接入 NEC-MCP 智能协作中枢（v0.4.0）�
 
 export const PUBLISH_PROMPT = `请把当前项目发布到 NEC 团队应用广场：
 1. 收集本项目的静态文件（入口必须是 index.html，含引用的 CSS/JS/图片）
-2. 调用 NEC-MCP 的 deploy_app 工具：
+2. 先确认真实的集成声明 integration：
+   - level 选 P（公开只读）/ I（身份打通）/ B（业务打通）/ D（设备打通）
+   - owner 填真实负责人或负责组，dataSource 填当前权威数据源，businessId 填稳定业务 ID（纯静态 P 可省略）
+   - apis 填实际依赖 API，cacheTtl 填缓存时效；B 级待整改且 apis 为空时必须在 notes 说明原因
+   - status 只能是 declared / partial / verified；没有证据用 declared，有自动化测试证据可用 partial
+   - verified 必须有 type=production 且带 date、ref、summary 的生产验收证据，不能用单测或截图冒充
+3. 调用 NEC-MCP 的 deploy_app 工具：
    - name 用小写连字符命名（如 inventory-check）
    - title 用中文展示名，author 填我的名字
-3. 成功后把访问链接发给我`
+   - integration 必填；没有真实业务闭环时保持 declared 或 partial，不得宣称已打通
+4. 成功后把访问链接和实际验收状态发给我`
 
 export const DOC_PUBLISH_PROMPT = `请把这条资料发布/更新到 NEC 团队资料页：
 1. 调用 NEC-MCP 的 publish_doc 工具

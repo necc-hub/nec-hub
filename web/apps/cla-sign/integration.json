@@ -1,0 +1,11 @@
+{
+  "level": "I",
+  "owner": "NEC 开源社区",
+  "dataSource": "KV cla:sig:* 与 cla:oid:*",
+  "businessId": "飞书 open_id；匿名历史路径为 GitHub 用户名",
+  "apis": ["/api/cla", "/api/cla/status", "/api/cla/sign"],
+  "cacheTtl": "签署状态实时读取",
+  "status": "declared",
+  "evidence": [],
+  "notes": "当前允许匿名签署，与 I 级身份打通目标存在冲突"
+}

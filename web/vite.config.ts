@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { validateAppIntegration } from '../src/shared/app-integration'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -33,6 +34,7 @@ const BUILTIN_APP_META: Record<string, { group: 'core' | 'standalone'; title: st
   drawing: { group: 'standalone', title: '机械图纸审批', desc: '图纸提交 · 审批流转', icon: '📏' },
   'season-goals': { group: 'standalone', title: '赛季目标管理', desc: '目标 · 关键结果 · 完成度跟踪', icon: '🎯' },
   'task-schedule': { group: 'standalone', title: '任务排期', desc: '任务计划 · 排期甘特 · 进度', icon: '🗓️' },
+  'ress-solution': { group: 'standalone', title: 'StarCharge RESS 场景方案', desc: '场景视频 · 产品包 BOM · 配置导出', icon: '🔋' },
   k1: { group: 'standalone', title: 'K1 Dashboard', desc: '设备状态 · 温度趋势 · 打印历史 · 床网数据', icon: '🖨️' },
 }
 const BUILTIN_APP_ORDER = Object.keys(BUILTIN_APP_META)
@@ -52,7 +54,8 @@ function builtinManifestEntries() {
       const html = fs.readFileSync(path.join(appsDir, name, 'index.html'), 'utf-8')
       title = html.match(/<title>([^<]*)<\/title>/)?.[1]?.replace(/\s*·\s*NEC HUB\s*$/, '').trim() || name
     }
-    return { name, title: meta?.title ?? title, desc: meta?.desc ?? '', icon: meta?.icon ?? '🧩', group: meta?.group ?? 'standalone' }
+    const integration = validateAppIntegration(JSON.parse(fs.readFileSync(path.join(appsDir, name, 'integration.json'), 'utf8')), name)
+    return { name, title: meta?.title ?? title, desc: meta?.desc ?? '', icon: meta?.icon ?? '🧩', group: meta?.group ?? 'standalone', integration }
   })
 }
 

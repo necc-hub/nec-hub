@@ -5,12 +5,12 @@
 const INTRO = "NEC-MCP — NEC 团队 AI 中台智能协作中枢。";
 
 const APPS =
-  "应用广场发布：deploy_app 上传静态文件部署（name 用小写字母/数字/连字符且以字母或数字开头，files 须含 index.html，文本用 text、二进制用 base64，同名重复部署即覆盖更新），register_app 登记外部链接应用，sync_vercel 从 Vercel 批量发现登记；";
+  "应用广场发布：deploy_app 上传静态文件部署（name 用小写字母/数字/连字符且以字母或数字开头，files 须含 index.html，文本用 text、二进制用 base64，同名重复部署即覆盖更新），register_app 登记外部链接应用，sync_vercel 从 Vercel 批量发现登记。新上架和更新必须传 integration（P/I/B/D、owner、dataSource、businessId、apis、cacheTtl、status、evidence），sync_vercel 用 integrations 按应用名传入并整批预检；verified 必须有带 summary 的 production 证据，历史未声明应用不算已打通；";
 
 const SKILLS = "Skill 中心：publish_skill 上架、import_skills 批量导入、remove_skills 下架；";
 
 const DASHBOARD =
-  "数据看板：config_dashboard 配置飞书多维表格（含 goals 赛季目标表），query_bitable 查询（finance 表需 user_token 且角色为队长/财务，或管理端 MCP_TOKEN），update_progress 回写赛季目标完成度/状态，validate_bitable 校验 4 张底表脏数据（scope=mine 校验自己 / scope=all 全量仅队长/组长），config_validate_rules 管理校验规则，update_inventory 物资台账手工调账（inbound/outbound/adjust，仅管理端，硬件审批 arrive/issue 已自动联动台账）；";
+  "数据看板：config_dashboard 配置飞书多维表格（含 goals 赛季目标表），query_bitable 查询（非管理调用均需有效 user_token 且队员名单 matched=true；finance 表另需队长/财务，管理端 MCP_TOKEN 可查），update_progress 回写赛季目标完成度/状态，validate_bitable 校验 4 张底表脏数据（scope=mine 校验自己 / scope=all 全量仅队长/组长），config_validate_rules 管理校验规则，update_inventory 物资台账手工调账（inbound/outbound/adjust，仅管理端，硬件审批 arrive/issue 已自动联动台账）；";
 
 const BITABLE_SETUP = "数据基建：setup_bitable 一键建标准四表，add_records 批量追加记录（均仅管理端）；";
 

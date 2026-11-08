@@ -63,7 +63,7 @@ export const TOOLS = TOOL_REGISTRY.map(({ name, description, inputSchema }) => (
   inputSchema,
 }));
 
-/** 降级模式（未配置 MCP_TOKEN）下放行的只读工具集合，由注册表 readOnly 标记派生 */
+/** 非管理端可尝试调用的只读工具集合；各工具仍须独立校验用户身份与数据权限 */
 export const READONLY_TOOLS: ReadonlySet<string> = new Set(
   TOOL_REGISTRY.filter((t) => t.readOnly).map((t) => t.name),
 );

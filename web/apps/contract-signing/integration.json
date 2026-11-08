@@ -1,0 +1,13 @@
+{
+  "level": "B",
+  "owner": "NEC 运营组",
+  "dataSource": "飞书 Base 合同主表、评论、事件 + approvals 审批引擎",
+  "businessId": "HT-<YYYY>-<3位序号>",
+  "apis": ["/api/contract-approval/*", "/api/approvals/*", "/api/todos"],
+  "cacheTtl": "待办 5 分钟",
+  "status": "partial",
+  "evidence": [
+    { "type": "test", "ref": "src/contract-approval/__tests__/contract-approval.test.ts", "date": "2026-11-06" }
+  ],
+  "notes": "生产合同会签闭环待验收"
+}

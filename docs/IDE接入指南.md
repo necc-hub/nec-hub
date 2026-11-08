@@ -83,7 +83,7 @@ npm run mcp:setup -- --local   # 本地开发（先 npm run dev）
 | 更新 PRD 看板 | `update_prd`（FE-01~18，FE-17/18 为子项） |
 | 回写赛季目标进度 | `update_progress` |
 | 发布资料页条目 | `publish_doc` |
-| 部署/登记应用 | `deploy_app` / `register_app` |
+| 部署/登记应用 | `deploy_app` / `register_app`（均必传 `integration`） |
 | 物资调账 | `update_inventory` |
 | 发起审批 | `submit_approval` |
 | 拉会 / 通知 / 邮件 | `schedule_meeting` / `send_notice` / `send_mail` |
@@ -95,9 +95,9 @@ npm run mcp:setup -- --local   # 本地开发（先 npm run dev）
 
 - **401 unauthorized**：token 与目标环境不符。本地 token 通常不能用于生产，反之亦然；用 `npm run mcp:setup` 会自动预检并提示。
 - **ECONNREFUSED（本地）**：dev 没启动，先 `npm run dev`；端口默认 8787。
-- **写工具提示"未配置 MCP_TOKEN 时仅放行只读工具"**：当前 Worker 未配置 token，处于只读降级模式。
+- **写工具提示"需要有效 MCP_TOKEN"**：写操作只允许管理端；只读降级不代表公开或免用户鉴权。
 - **调了 `update_prd` 但线上看板没变**：多半接的是本地 dev 端点（写进了本地 KV）。切到生产端点后重试。
-- **财务表查询被拒**：`query_bitable table=finance` 需管理端 token 或队长/财务的 user_token。
+- **多维表格查询被拒**：非管理调用 `query_bitable` 均需有效 `user_token` 且名单匹配；`table=finance` 另需队长/财务角色或管理端 token。
 
 ## 安全边界
 

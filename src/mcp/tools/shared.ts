@@ -20,7 +20,7 @@ export interface McpToolDef {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
-  /** 只读标记：未配置 MCP_TOKEN 的降级模式下仅放行 readOnly 工具 */
+  /** 只读标记：非管理端仅可尝试 readOnly 工具；不表示公开或免用户鉴权 */
   readOnly?: boolean;
   impl: (args: Record<string, unknown>, env: Env, ctx: McpToolCtx) => Promise<McpToolResult>;
 }

@@ -3,7 +3,7 @@
 单体 Cloudflare Worker：门户 + 飞书 OAuth 登录 + API + MCP 端点 + 应用托管（R2）+ 注册表（KV）+ 报销 ERP 快照（D1）。
 
 - 生产门户：<https://hub.newenergycoder.club>
-- MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC，写操作需 `Authorization: Bearer <MCP_TOKEN>`）；token 生成 `npm run mcp:token` + `wrangler secret put MCP_TOKEN`，桌面 IDE 一键接入 `npm run mcp:setup`，详见 [`docs/IDE接入指南.md`](docs/IDE接入指南.md)
+- MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC；协议元数据公开，业务读工具按工具要求验证 `user_token`，写操作需 `Authorization: Bearer <MCP_TOKEN>`）；token 生成 `npm run mcp:token` + `wrangler secret put MCP_TOKEN`，桌面 IDE 一键接入 `npm run mcp:setup`，详见 [`docs/IDE接入指南.md`](docs/IDE接入指南.md)
 - 源码：GitHub [necc-hub/nec-hub](https://github.com/necc-hub/nec-hub) · Gitee 镜像 [darrenpig/nec-hub](https://gitee.com/darrenpig/nec-hub)
 
 ## 线上内容（截至 2026-10-16）
@@ -65,6 +65,7 @@ src/
 ## 功能模块
 
 - **登录与权限**：飞书 OAuth 登录（`/auth/feishu` → 签发 HttpOnly 会话 Cookie），角色由队员名单表解析（队长/财务可见财务明细，队员见汇总，未登录隐藏）；MES 免登复用同一兑换端点。
+- **APP 互联互通（FE-20）**：14 个内置应用均以 `web/apps/<name>/integration.json` 声明 P（公开只读）/ I（身份打通）/ B（业务打通）/ D（设备打通）、权威数据源、业务 ID、缓存和证据；核心业务应用须统一飞书 `open_id`、服务端权限与审批/待办闭环。新增或更新上架必须传 `integration`，历史未声明应用保留入口但不视为已打通；`verified` 只能凭带 `summary` 的 `production` 证据，自动化测试最多支持 `partial`。接入步骤见 [`docs/APP互联互通使用手册.md`](docs/APP互联互通使用手册.md)，验收口径见 [`docs/APP互联互通规范_V1.0.md`](docs/APP互联互通规范_V1.0.md)。
 - **个人首页（FE-06/07）**：`/api/home` 千人千面布局（个人 > 组 > 全员默认三级回退），白名单组件（我的应用/我的任务/我的报销/常用资料/赛季目标/物资查询），MCP `set_home_layout` 可让 Agent 按自然语言配置；`/api/todos` 聚合审批与待办（FE-09）。工作台含风险红黄分级告警、待办卡行（审批/评审/任务/报销）、组件拖拽排序与刷新过时提示。
 - **我的任务**：`GET /api/my-tasks` 绑定飞书任务后按 Task v2 同步拉取（KV 5 分钟缓存，`?refresh=1` 强刷），`POST /api/my-tasks/unbind` 解绑；门户「我的任务」Tab 展示。
 - **赛季目标管理**：`/api/season-goals/*` 收集单提交/采纳 + 按任务自动规划（模块网关 + 配置接口）；门户「赛季目标」Tab。
@@ -96,6 +97,7 @@ FE-05 校验周报与图纸评审告警走另一变量 `FEISHU_WEBHOOK_URL`（�
 - Skill 源仓库（Gitee）：<https://gitee.com/darrenpig/new_energy_coder_club>（`SKill` 分支，`skills/*/SKILL.md`）
 - 开源组织（GitHub）：<https://github.com/necc-hub>
 - 需求与规划：[`docs/团队AI中台PRD_V2.1.md`](docs/团队AI中台PRD_V2.1.md) · [`docs/团队AI中台搭建方案_V1.0.md`](docs/团队AI中台搭建方案_V1.0.md)
+- APP 接入：[`docs/APP互联互通使用手册.md`](docs/APP互联互通使用手册.md) · [`docs/APP互联互通规范_V1.0.md`](docs/APP互联互通规范_V1.0.md) · [`web/apps/README.md`](web/apps/README.md)
 - 图纸评审：[`docs/新增机图纸评审流程_PRD.md`](docs/新增机图纸评审流程_PRD.md) · [`docs/新增机图纸评审流程_设计文档.md`](docs/新增机图纸评审流程_设计文档.md) · [`docs/新增机图纸评审流程_方案C混合架构设计.md`](docs/新增机图纸评审流程_方案C混合架构设计.md) · [`docs/图纸评审流程对比分析.md`](docs/图纸评审流程对比分析.md)
 - 联想功能文档体系：[`docs/文档目录索引.md`](docs/文档目录索引.md)（README/快速开始/架构/API 参考/部署/运维/FAQ/用户手册共 13 篇，`node scripts/validate-docs.js` 质检）
 - 飞书接入：[`docs/飞书免登接入_MES.md`](docs/飞书免登接入_MES.md) · 接入包 [`integrations/mes/feishu-sso.js`](integrations/mes/feishu-sso.js) · [`docs/飞书工作台上架手册_NEC仓库作业台.md`](docs/飞书工作台上架手册_NEC仓库作业台.md) · [`docs/飞书定制工作台配置手册.md`](docs/飞书定制工作台配置手册.md)
@@ -126,7 +128,7 @@ printf 'MCP_TOKEN=%s\n' "$(cat .mcp-token)" > .dev.vars             # Worker 侧
 # .kimi-code/mcp.json 的 nec-hub.headers.Authorization 写入 "Bearer <同一 token>"
 ```
 
-不配 token 时插件仍可用，但 MCP 降级为只读模式（仅放行 readOnly 工具，写工具返回引导性错误）。生产环境写操作同理需 `Authorization: Bearer <MCP_TOKEN>`（secret 经 `wrangler secret put` 配置）。
+不配 token 时协议元数据仍可用，业务侧仅放行 `readOnly` 工具且继续执行各工具的用户权限检查：`whoami` 不再误报管理员，`query_bitable` 需有效 `user_token` 且名单匹配，写工具始终拒绝。生产环境写操作需 `Authorization: Bearer <MCP_TOKEN>`（secret 经 `wrangler secret put` 配置），无效 Bearer 一律 401，不能降级为匿名身份。
 
 ### 绑定 Kimi Code 的三层方式（按场景选）
 
@@ -197,13 +199,13 @@ Cron（`wrangler.jsonc` triggers，2 条 + 时间窗调度）：`*/8 * * * *` �
 
 | 工具 | 说明 |
 |---|---|
-| `deploy_app` | 上传静态文件到 R2 并注册到应用广场（`/apps/<name>/`） |
-| `register_app` | 外部已部署应用（如 Vercel 项目）链接登记 |
-| `sync_vercel` | 自动发现 Vercel 团队项目并批量登记（默认 dry-run，`confirm=true` 写入；需 `VERCEL_TOKEN`） |
+| `deploy_app` | 上传静态文件到 R2 并注册到应用广场；新上架/更新必传 `integration`，失败在副作用前终止 |
+| `register_app` | 登记外部应用链接；新登记/更新必传 `integration`，不代表自动完成 SSO 或业务打通 |
+| `sync_vercel` | 自动发现 Vercel 项目并批量登记（默认 dry-run，`confirm=true` 写入；需 `VERCEL_TOKEN`；经 `integrations` 按名声明并整批预检） |
 | `publish_skill` | 上架 SKILL.md 到 Skill 中心（中台自托管，`source: "hub"`） |
 | `import_skills` | 批量登记外部 Skill（只存名称/描述/链接）；不覆盖中台自托管的 Skill |
 | `remove_skills` | 按名称批量下架 Skill（安全约束：只能删外部登记来源，自托管不受影响） |
-| `query_bitable` | 只读查询飞书多维表格；finance 表需管理端（MCP_TOKEN）或有效 user_token（角色为队长/财务） |
+| `query_bitable` | 只读查询飞书多维表格；非管理调用需有效 `user_token` 且名单匹配，finance 表另需队长/财务或管理端 `MCP_TOKEN` |
 | `config_dashboard` | 配置/查看数据看板对接的多维表格（app_token + 各表 table_id） |
 | `config_drawing_review` | 配置/查看图纸评审流程对接的多维表格（reviews/minutes/rectifications/bom/events 等 10 张表；reviews 主表与引擎 flows:config 双配置同源，引擎侧自动回填） |
 | `config_hardware_review` | 配置/查看硬件评审流程对接的多维表格（reviews/minutes/rectifications/reports/events；主表双配置同源同上） |

@@ -1,0 +1,10 @@
+{
+  "level": "P",
+  "owner": "NEC 机械组",
+  "dataSource": "public/apps/mech-review-6014/ 静态纪要、DXF、CSV 与图片",
+  "apis": [],
+  "cacheTtl": "静态构建产物",
+  "status": "declared",
+  "evidence": [],
+  "notes": "6014 评审资料静态归档，不另建业务流程"
+}
