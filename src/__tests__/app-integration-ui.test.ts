@@ -4,12 +4,15 @@ import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("应用广场集成展示", () => {
-  it("三组应用卡片复用同一个集成徽章", () => {
+  it("三组应用目录复用同一个集成徽章", () => {
     const component = fs.readFileSync("web/src/shared/ui/IntegrationBadge.vue", "utf8");
+    const row = fs.readFileSync("web/src/portal/components/apps/AppCatalogRow.vue", "utf8");
     const appsTab = fs.readFileSync("web/src/portal/components/tabs/AppsTab.vue", "utf8");
     expect(component).toContain("integrationBadgeModel");
     expect(component).toContain("classes[model.tone]");
-    expect(appsTab.match(/<IntegrationBadge\b/g)).toHaveLength(3);
+    expect(row).toContain("<IntegrationBadge");
+    expect(appsTab.match(/<AppCatalogRow\b/g)).toHaveLength(3);
+    expect(appsTab).not.toContain("<IntegrationBadge");
   });
 
   it("K1 明确显示 P 级公网静态预览", () => {

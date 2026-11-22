@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// NEC 团队 AI 中台门户：Hero + TabNav + 16 个 Tab（所有面板常驻挂载、v-show 切换，保持原单文件版的 DOM 常驻行为）
-import { onMounted, watch } from 'vue'
+// NEC 团队 AI 中台门户：Hero + TabNav + 16 个 Tab（所有面板常驻挂载、v-show 切换）。
+import { computed, onMounted, watch } from 'vue'
 import HeroHeader from './components/HeroHeader.vue'
 import TabNav from './components/TabNav.vue'
 import GoalBanner from './components/GoalBanner.vue'
@@ -25,15 +25,19 @@ import { tabs, initTabs, switchTab, applyHashRoute, replayLoginReturn } from './
 import { auth, bootAuth } from '@shared/auth'
 import { loadTodos } from './composables/useBanners'
 
+const mainWidthClass = computed(() =>
+  tabs.active === 'home' || tabs.active === 'apps' || tabs.active === 'dashboard' ? 'max-w-7xl' : 'max-w-5xl'
+)
+
 onMounted(async () => {
   initTabs()
   await bootAuth()
-  loadTodos() // FE-09 待办条（未登录/无待办自动隐藏）
-  replayLoginReturn() // OAuth 往返后恢复暂存的深链目标（ST-02）
+  loadTodos()
+  replayLoginReturn()
 })
 watch(() => auth.tick, () => {
   loadTodos()
-  applyHashRoute() // 登录门控放开后重放暂存的深链（ST-02）
+  applyHashRoute()
 })
 </script>
 
@@ -44,8 +48,7 @@ watch(() => auth.tick, () => {
   <GoalBanner />
   <TodoBar />
 
-  <!-- 看板是表格密集型面板，单独放宽版心；其余 Tab 维持阅读宽度 -->
-  <main class="mx-auto px-4 sm:px-6 py-6 sm:py-8" :class="tabs.active === 'dashboard' ? 'max-w-7xl' : 'max-w-5xl'">
+  <main class="portal-main mx-auto px-4 sm:px-6 py-6 sm:py-8" :class="mainWidthClass">
     <HomeTab v-show="tabs.active === 'home'" @goto="switchTab" />
     <MyTasksTab v-show="tabs.active === 'my-tasks'" />
     <DrawingReviewTab v-show="tabs.active === 'drawing-review'" />
@@ -64,8 +67,8 @@ watch(() => auth.tick, () => {
     <AdminTab v-show="tabs.active === 'admin'" />
   </main>
 
-  <footer class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-xs text-gray-400 leading-relaxed">
-    NEC 团队 AI 中台 MVP · Cloudflare Workers + KV + R2 · 数据基建在飞书 · BUILT TO DAWN — KEEP BUILDING<br/>
- <a href="/brand/" class="hover:underline text-nec-cyan">→ NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-xs text-nec-gray leading-relaxed">
+    NEC 团队 AI 中台 · BUILT TO DAWN — KEEP BUILDING<br />
+    <a href="/brand/" class="inline-flex min-h-11 items-center hover:underline text-nec-navy font-bold">→ NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
   </footer>
 </template>

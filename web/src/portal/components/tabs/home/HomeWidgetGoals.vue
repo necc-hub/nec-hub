@@ -40,7 +40,7 @@ function rowClass(it: any): string {
 
 /** 徽章：已过期（灰）优先；否则 late/warn 显示风险徽章 */
 function badgeOf(it: any): { text: string; cls: string } {
-  if (it.overdue && !it.done) return { text: '已过期', cls: 'bg-gray-200 text-gray-500' }
+  if (it.overdue && !it.done) return { text: '已过期', cls: 'bg-nec-fog text-nec-gray' }
   const r = riskOf(it)
   if (r === 'late') return { text: '⚠ 风险', cls: 'bg-[#FBEAEA] text-[#C22E2E]' }
   if (r === 'warn') return { text: '⚠ 风险', cls: 'bg-[#FDEADD] text-[#B45309]' }
@@ -82,37 +82,34 @@ onMounted(async () => {
 </script>
 
 <template>
-  <p v-if="failed" class="text-sm text-gray-400">加载失败，请刷新重试。</p>
-  <p v-else-if="g === undefined" class="text-sm text-gray-400">加载中…</p>
-  <!-- 配置缺口不是用户的问题：给出可复制的接入 Prompt（与数据看板未配置引导同一模式） -->
+  <p v-if="failed" class="text-sm text-nec-gray">加载失败，请刷新重试。</p>
+  <p v-else-if="g === undefined" class="text-sm text-nec-gray">加载中…</p>
   <template v-else-if="!g || !g.configured">
-    <p class="text-sm text-gray-500 mb-2">赛季目标未配置：把下面的 Prompt 发给已接入 NEC-MCP 的 Agent 完成接入。</p>
+    <p class="text-sm text-nec-gray mb-2">赛季目标未配置：把下面的 Prompt 发给已接入 NEC-MCP 的 Agent 完成接入。</p>
     <pre class="prompt text-xs bg-gray-900 text-green-300 rounded-lg p-3" id="home-goals-prompt">{{ GOALS_CONFIG_PROMPT }}</pre>
- <button @click="copyText(GOALS_CONFIG_PROMPT)" class="mt-2 text-xs text-white px-3 py-1.5 rounded bg-nec-navy">复制 Prompt</button>
+    <button @click="copyText(GOALS_CONFIG_PROMPT)" class="mt-2 min-h-11 text-xs text-white px-4 py-1.5 rounded-full bg-nec-navy">复制 Prompt</button>
   </template>
-  <p v-else-if="!items.length" class="text-sm text-gray-400">赛季目标表已配置但暂无数据：在飞书赛季目标表中添加第一条目标（含截止日期）后即可显示在这里。</p>
+  <p v-else-if="!items.length" class="text-sm text-nec-gray">赛季目标表已配置但暂无数据：在飞书赛季目标表中添加第一条目标（含截止日期）后即可显示在这里。</p>
   <template v-else>
     <div v-for="(it, i) in items" :key="i"
-         class="py-1.5 border-b border-gray-100 last:border-0 rounded-md -mx-1 px-1 cursor-pointer"
+         class="home-goal-row py-2 border-b border-nec-line last:border-0 rounded-md -mx-1 px-1 cursor-pointer"
          :class="rowClass(it)" title="点击进入赛季目标 Tab" role="button" tabindex="0"
          @click="goto('season-goals')" @keydown.enter="goto('season-goals')">
-      <div class="flex items-center gap-2" :class="{ 'opacity-60': it.overdue && !it.done }">
+      <div class="home-goal-line flex items-center gap-2" :class="{ 'opacity-60': it.overdue && !it.done }">
         <span v-if="badgeOf(it).text" class="text-[10px] px-1.5 py-0.5 rounded shrink-0 font-medium" :class="badgeOf(it).cls">{{ badgeOf(it).text }}</span>
-        <span class="text-xs text-gray-400 mono shrink-0">{{ fmtDashDate(it.deadline) }}</span>
-        <span class="flex-1 min-w-0 truncate" :class="{ 'line-through text-gray-400': it.overdue && !it.done }">{{ it.title }}</span>
-        <span class="text-xs text-gray-500 mono shrink-0">{{ it.progress === null ? '—' : normPct(it.progress) + '%' }}</span>
-        <span class="text-xs text-gray-300 shrink-0" aria-hidden="true">›</span>
-        <a :href="it.link" target="_blank" @click.stop title="打开飞书记录" class="text-xs text-gray-300 hover:text-gray-500 shrink-0" aria-label="打开飞书记录">↗</a>
+        <span class="text-xs text-nec-gray mono shrink-0">{{ fmtDashDate(it.deadline) }}</span>
+        <span class="home-goal-title flex-1 min-w-0 truncate" :class="{ 'line-through text-nec-gray': it.overdue && !it.done }">{{ it.title }}</span>
+        <span class="text-xs text-nec-gray mono shrink-0">{{ it.progress === null ? '—' : normPct(it.progress) + '%' }}</span>
+        <span class="text-xs text-nec-gray shrink-0" aria-hidden="true">›</span>
+        <a :href="it.link" target="_blank" rel="noopener noreferrer" @click.stop title="打开飞书记录" class="min-h-11 sm:min-h-0 inline-flex items-center text-xs text-nec-gray hover:text-nec-navy shrink-0" aria-label="打开飞书记录">↗</a>
       </div>
-      <div class="relative h-1.5 rounded bg-gray-100 overflow-hidden mt-1">
+      <div class="relative h-1.5 rounded bg-nec-fog overflow-hidden mt-1">
         <div :style="{ width: normPct(it.progress) + '%', height: '100%', maxWidth: '100%', background: barColor(it) }"></div>
-        <!-- 时间基准刻度：竖线标出「年初→今天」应到的位置，条长明显短于刻度即落后来源 -->
-        <div v-if="timeMark(it) !== null" class="absolute top-0 h-full w-[2px] bg-gray-500/70"
+        <div v-if="timeMark(it) !== null" class="absolute top-0 h-full w-[2px] bg-nec-gray/70"
              :style="{ left: `min(${timeMark(it)}%, calc(100% - 2px))` }" title="时间基准（年初至今）"></div>
       </div>
     </div>
-    <!-- 图例：口径与颜色一屏说清（与顶部告警条同一套 goalRisk 分级） -->
-    <p class="text-[10px] text-gray-400 mt-1.5 leading-relaxed">
+    <p class="text-[11px] text-nec-gray mt-2 leading-relaxed">
       条＝实际进度，刻度＝时间基准（年初 → 截止日）· 红＝落后超 20%，黄＝落后超 10%，绿＝正常
     </p>
   </template>

@@ -27,11 +27,16 @@ const HOME_WIDGET_DEFS: Record<string, { title: string; comp: Component }> = {
   'goals': { title: '赛季目标', comp: HomeWidgetGoals },
   'inventory': { title: '物资查询', comp: HomeWidgetInventory },
 }
-const HOME_SOURCE_LABEL: Record<string, string> = { personal: '个人定制', group: '组默认', default: '全员默认' }
+const HOME_SOURCE_LABEL: Record<string, string> = { personal: '个人视图', group: '组视图', default: '团队视图' }
 
 interface HomeWidget { id: string; title?: string }
 
 const widgets = ref<HomeWidget[]>([])
+const HOME_SECONDARY_IDS = new Set(['my-apps', 'docs'])
+const sameHomeRegion = (a: HomeWidget, b: HomeWidget) => HOME_SECONDARY_IDS.has(a.id) === HOME_SECONDARY_IDS.has(b.id)
+const indexedWidgets = computed(() => widgets.value.map((widget, index) => ({ widget, index })))
+const primaryWidgets = computed(() => indexedWidgets.value.filter(({ widget }) => !HOME_SECONDARY_IDS.has(widget.id)))
+const secondaryWidgets = computed(() => indexedWidgets.value.filter(({ widget }) => HOME_SECONDARY_IDS.has(widget.id)))
 const homeLoading = ref(true)
 const source = ref('default')
 const group = ref('')
@@ -166,6 +171,7 @@ function onDragOver(i: number, ev: DragEvent) {
   ev.preventDefault()
   const from = dragIdx.value
   if (from < 0 || from === i) return
+  if (!sameHomeRegion(widgets.value[from], widgets.value[i])) return
   const arr = widgets.value.slice()
   const [moved] = arr.splice(from, 1)
   arr.splice(i, 0, moved)
@@ -327,100 +333,108 @@ watch(() => todoBar.data, () => applyTodoCounts())
 
 <template>
   <section id="tab-home">
-    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-      <h2 class="text-lg font-bold">我的首页<span id="home-source" class="text-xs font-normal text-gray-400 ml-2">{{ sourceLabel }}</span></h2>
-      <div class="flex items-center gap-2">
-        <button @click="resetHome" id="home-reset-btn" v-show="auth.me.authenticated" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600">恢复默认</button>
- <button @click="showPrompt = !showPrompt" id="home-edit-layout-btn" class="text-sm text-white px-4 py-2 rounded-lg bg-nec-cyan">编辑布局</button>
+    <div class="home-heading">
+      <div class="min-w-0">
+        <p class="home-heading__eyebrow mono">MY WORKSPACE / 01</p>
+        <h2>我的首页</h2>
+        <span id="home-source" class="home-heading__meta">{{ sourceLabel }}</span>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <button @click="resetHome" id="home-reset-btn" v-show="auth.me.authenticated" class="portal-text-button">恢复默认</button>
+        <button @click="showPrompt = !showPrompt" id="home-edit-layout-btn" class="portal-text-button" :aria-expanded="showPrompt" aria-controls="home-prompt-box">{{ showPrompt ? '收起布局设置' : '编辑布局' }}</button>
       </div>
     </div>
-    <div v-if="showPrompt" id="home-prompt-box" class="mb-6 bg-white rounded-xl shadow p-5">
-      <h3 class="font-bold mb-2">编辑布局：复制 Prompt 给你的 Agent</h3>
+    <div v-if="showPrompt" id="home-prompt-box" class="portal-card mb-6 p-5">
+      <h3 class="font-bold mb-2 text-nec-navy">编辑布局：复制 Prompt 给你的 Agent</h3>
       <pre class="prompt text-sm bg-gray-900 text-green-300 rounded-lg p-4" id="home-prompt">{{ HOME_PROMPT }}</pre>
- <button @click="copyText(HOME_PROMPT)" class="mt-3 text-sm text-white px-3 py-1.5 rounded bg-nec-navy">复制</button>
-      <p class="text-xs text-gray-400 mt-3">布局为白名单组件制（禁止自由 HTML），组件顺序即渲染顺序，配置绑定飞书账号、换设备/重新登录都保持。组长/队长把 Prompt 里的 scope 改成 group 可配置本组默认首页。也可直接拖动下方卡片右上角的 ⠿ 手柄排序，松手自动保存。</p>
+      <button @click="copyText(HOME_PROMPT)" class="mt-3 min-h-11 text-sm text-white px-4 py-1.5 rounded-full bg-nec-navy">复制</button>
+      <p class="text-xs text-nec-gray mt-3 leading-relaxed">布局为白名单组件制，组件在同一功能区内排序，配置绑定飞书账号并跨设备保持。组长/队长把 Prompt 里的 scope 改成 group 可配置本组默认首页；也可拖动卡片右上角手柄，松手自动保存。</p>
     </div>
 
-    <!-- #3 待办卡行：告警条之下、团队动态之上 -->
-    <div v-if="auth.me.authenticated" id="home-todo-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-      <button type="button" @click="emit('goto', 'contract-approval')" title="打开合同审批面板"
-              class="bg-white rounded-xl shadow px-4 py-3 flex items-center gap-2.5 hover:shadow-md transition cursor-pointer">
-        <span class="text-lg shrink-0" aria-hidden="true">📋</span>
+    <div v-if="auth.me.authenticated" id="home-todo-cards" class="home-todo-grid">
+      <button type="button" @click="emit('goto', 'contract-approval')" title="打开合同审批面板" class="home-todo-card">
+        <span class="home-todo-index mono" aria-hidden="true">01</span>
         <span class="flex-1 min-w-0 text-left text-sm font-bold">待审批</span>
-        <span class="text-xl font-bold shrink-0" :class="todoCards.approval ? 'text-[#C22E2E]' : 'text-gray-300'">{{ todoCards.approval }}</span>
+        <span class="home-todo-count" :class="todoCards.approval ? 'text-[#C22E2E]' : 'text-nec-gray'">{{ todoCards.approval }}</span>
       </button>
-      <button type="button" @click="emit('goto', 'drawing-review')" title="打开图纸评审面板"
-              class="bg-white rounded-xl shadow px-4 py-3 flex items-center gap-2.5 hover:shadow-md transition cursor-pointer">
-        <span class="text-lg shrink-0" aria-hidden="true">🔍</span>
+      <button type="button" @click="emit('goto', 'drawing-review')" title="打开图纸评审面板" class="home-todo-card">
+        <span class="home-todo-index mono" aria-hidden="true">02</span>
         <span class="flex-1 min-w-0 text-left text-sm font-bold">待评审</span>
-        <span class="text-xl font-bold shrink-0" :class="todoCards.review ? 'text-[#C22E2E]' : 'text-gray-300'">{{ todoCards.review }}</span>
+        <span class="home-todo-count" :class="todoCards.review ? 'text-[#C22E2E]' : 'text-nec-gray'">{{ todoCards.review }}</span>
       </button>
-      <button type="button" @click="emit('goto', 'my-tasks')" title="打开我的任务面板"
-              class="bg-white rounded-xl shadow px-4 py-3 flex items-center gap-2.5 hover:shadow-md transition cursor-pointer">
-        <span class="text-lg shrink-0" aria-hidden="true">🎯</span>
+      <button type="button" @click="emit('goto', 'my-tasks')" title="打开我的任务面板" class="home-todo-card">
+        <span class="home-todo-index mono" aria-hidden="true">03</span>
         <span class="flex-1 min-w-0 text-left text-sm font-bold">我的任务</span>
-        <span class="text-xl font-bold shrink-0" :class="todoCards.tasks ? 'text-[#C22E2E]' : 'text-gray-300'">{{ todoCards.tasks }}</span>
+        <span class="home-todo-count" :class="todoCards.tasks ? 'text-[#C22E2E]' : 'text-nec-gray'">{{ todoCards.tasks }}</span>
       </button>
-      <button type="button" @click="emit('goto', 'reimburse')" title="打开报销面板"
-              class="bg-white rounded-xl shadow px-4 py-3 flex items-center gap-2.5 hover:shadow-md transition cursor-pointer">
-        <span class="text-lg shrink-0" aria-hidden="true">💰</span>
+      <button type="button" @click="emit('goto', 'reimburse')" title="打开报销面板" class="home-todo-card">
+        <span class="home-todo-index mono" aria-hidden="true">04</span>
         <span class="flex-1 min-w-0 text-left text-sm font-bold">报销中</span>
-        <span class="text-xl font-bold shrink-0" :class="todoCards.reimburse ? 'text-[#C22E2E]' : 'text-gray-300'">{{ todoCards.reimburse }}</span>
+        <span class="home-todo-count" :class="todoCards.reimburse ? 'text-[#C22E2E]' : 'text-nec-gray'">{{ todoCards.reimburse }}</span>
       </button>
     </div>
 
     <!-- #12 新人引导：待办卡行下方、仅首次、可关闭 -->
-    <div v-if="!introHidden && introText" id="home-intro"
-         class="mb-4 rounded-xl px-4 py-2.5 text-xs text-gray-600 flex items-center gap-3"
-         style="background:var(--nec-info-bg); border:1px solid #BFE3F5">
-      <span class="shrink-0" aria-hidden="true">💡</span>
+    <div v-if="!introHidden && introText" id="home-intro" class="home-intro">
+      <span class="home-intro__mark mono" aria-hidden="true">i</span>
       <span class="flex-1 leading-relaxed">{{ introText }}</span>
-      <button @click="dismissHomeIntro" class="text-gray-400 hover:text-gray-600 shrink-0" title="不再显示">✕</button>
+      <button @click="dismissHomeIntro" class="min-h-11 min-w-11 text-nec-gray hover:text-nec-navy shrink-0" title="不再显示" aria-label="不再显示首页说明">×</button>
     </div>
 
     <div id="home-activity" class="mb-4">
-      <div v-if="commits.length" class="bg-white rounded-xl shadow px-4 py-3">
-        <div class="flex items-center gap-2 text-xs mb-1">
- <span class="font-bold text-nec-navy">团队动态</span>
-          <span class="text-gray-400">· 最近 git 提交</span>
- <button @click="emit('goto', 'prd')" class="ml-auto hover:underline text-nec-cyan">PRD 看板 →</button>
+      <div v-if="commits.length" class="portal-card px-5 py-4">
+        <div class="flex items-center gap-2 text-xs mb-2">
+          <span class="font-bold text-nec-navy">团队动态</span>
+          <span class="text-nec-gray">· 最近 git 提交</span>
+          <button @click="emit('goto', 'prd')" class="ml-auto min-h-11 sm:min-h-0 hover:underline text-nec-navy font-bold">PRD 看板 →</button>
         </div>
-        <ul class="divide-y divide-gray-50">
-          <li v-for="(c, i) in commits" :key="i" class="py-1.5 flex items-baseline gap-2 text-sm">
-            <span v-if="c.branches.length > 1" class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 mono shrink-0" :title="c.branches.join(' / ')">{{ c.branches.length }} 分支</span>
-            <span v-else class="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 mono shrink-0" :title="c.branches[0]">{{ c.branches[0] }}</span>
- <a v-if="commitHref(c)" :href="commitHref(c)" target="_blank" :title="c.message" class="flex-1 min-w-0 truncate hover:underline text-nec-ink">{{ c.message || '' }}</a>
-            <span v-else :title="c.message" class="flex-1 min-w-0 truncate">{{ c.message || '' }}</span>
-            <span class="text-xs text-gray-400 shrink-0">{{ c.author || '' }}{{ c.at ? ' · ' + fmtAt(c.at) : '' }}</span>
+        <ul class="divide-y divide-nec-line">
+          <li v-for="(c, i) in commits" :key="i" class="py-2 flex items-baseline gap-2 text-sm min-w-0">
+            <span v-if="c.branches.length > 1" class="text-[10px] px-1.5 py-0.5 rounded bg-nec-fog text-nec-gray mono shrink-0" :title="c.branches.join(' / ')">{{ c.branches.length }} 分支</span>
+            <span v-else class="text-[10px] px-1.5 py-0.5 rounded bg-nec-fog text-nec-gray mono shrink-0" :title="c.branches[0]">{{ c.branches[0] }}</span>
+            <a v-if="commitHref(c)" :href="commitHref(c)" target="_blank" rel="noopener noreferrer" :title="c.message" class="home-commit-title flex-1 min-w-0 truncate hover:underline text-nec-ink">{{ c.message || '' }}</a>
+            <span v-else :title="c.message" class="home-commit-title flex-1 min-w-0 truncate">{{ c.message || '' }}</span>
+            <span class="home-commit-meta text-xs text-nec-gray shrink-0">{{ c.author || '' }}{{ c.at ? ' · ' + fmtAt(c.at) : '' }}</span>
           </li>
         </ul>
       </div>
     </div>
 
-    <!-- #6 信息密度两栏：xl 屏 CSS columns-2（顺序自上而下），小屏单列；卡片 break-inside-avoid -->
-    <div id="home-widgets" class="xl:columns-2 xl:gap-4">
-      <div v-if="homeLoading && !widgets.length" id="home-widgets-loading"
-           class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400 break-inside-avoid mb-4">首页布局加载中…</div>
-      <div v-else-if="!widgets.length" id="home-widgets-empty"
-           class="bg-white rounded-xl shadow p-8 text-center text-sm text-gray-400 break-inside-avoid mb-4">暂无可用首页组件</div>
-      <template v-else>
-        <div v-for="(w, i) in widgets" :key="w.id"
-             class="bg-white rounded-xl shadow p-5 group relative break-inside-avoid mb-4"
-             :class="{ 'ring-2 ring-sky-200': dragIdx === i }"
-             @dragover="onDragOver(i, $event)" @drop="onCardDrop($event)">
-          <div class="flex items-center justify-between gap-2 mb-3">
-            <h3 class="font-bold truncate">{{ w.title || HOME_WIDGET_DEFS[w.id].title }}</h3>
-            <div v-if="auth.me.authenticated" class="flex items-center gap-2 shrink-0">
-              <span @dragstart="onDragStart(i, $event)" @dragend="onDragEnd"
-                    draggable="true" title="拖拽排序（松手自动保存）"
-                    class="text-xs text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing select-none">⠿ 拖拽</span>
-              <button @click="removeHomeWidget(i)" title="从我的首页移除该组件（写入个人布局）"
-                      class="hidden group-hover:block text-xs text-gray-300 hover:text-red-500">✕ 移除</button>
+    <div v-if="homeLoading && !widgets.length" id="home-widgets-loading" class="portal-card p-8 text-center text-sm text-nec-gray mb-4">首页布局加载中…</div>
+    <div v-else-if="!widgets.length" id="home-widgets-empty" class="portal-card p-8 text-center text-sm text-nec-gray mb-4">暂无可用首页组件</div>
+    <div v-else id="home-widgets" class="home-grid">
+      <div class="home-column home-column--primary">
+        <div v-for="entry in primaryWidgets" :key="entry.widget.id"
+             class="portal-card home-widget"
+             :class="{ 'ring-2 ring-sky-200': dragIdx === entry.index }"
+             @dragover="onDragOver(entry.index, $event)" @drop="onCardDrop">
+          <div class="home-widget__header">
+            <h3>{{ entry.widget.title || HOME_WIDGET_DEFS[entry.widget.id].title }}</h3>
+            <div v-if="auth.me.authenticated" class="home-widget__tools">
+              <span @dragstart="onDragStart(entry.index, $event)" @dragend="onDragEnd"
+                    draggable="true" title="在同一功能区内拖拽排序" class="home-widget__drag">⠿ 拖拽</span>
+              <button @click="removeHomeWidget(entry.index)" title="从我的首页移除该组件" class="home-widget__remove">× 移除</button>
             </div>
           </div>
-          <component :is="HOME_WIDGET_DEFS[w.id].comp" :shared="shared" />
+          <component :is="HOME_WIDGET_DEFS[entry.widget.id].comp" :shared="shared" />
         </div>
-      </template>
+      </div>
+      <div class="home-column home-column--secondary">
+        <div v-for="entry in secondaryWidgets" :key="entry.widget.id"
+             class="portal-card home-widget"
+             :class="{ 'ring-2 ring-sky-200': dragIdx === entry.index }"
+             @dragover="onDragOver(entry.index, $event)" @drop="onCardDrop">
+          <div class="home-widget__header">
+            <h3>{{ entry.widget.title || HOME_WIDGET_DEFS[entry.widget.id].title }}</h3>
+            <div v-if="auth.me.authenticated" class="home-widget__tools">
+              <span @dragstart="onDragStart(entry.index, $event)" @dragend="onDragEnd"
+                    draggable="true" title="在同一功能区内拖拽排序" class="home-widget__drag">⠿ 拖拽</span>
+              <button @click="removeHomeWidget(entry.index)" title="从我的首页移除该组件" class="home-widget__remove">× 移除</button>
+            </div>
+          </div>
+          <component :is="HOME_WIDGET_DEFS[entry.widget.id].comp" :shared="shared" />
+        </div>
+      </div>
     </div>
   </section>
 </template>

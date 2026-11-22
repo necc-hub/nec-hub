@@ -5,17 +5,14 @@ import { auth, getLastLogin, loginWithPassword, logout, startLogin } from '@shar
 import { switchTab } from '@portal/composables/useTabs'
 import AuthToast from '@shared/ui/AuthToast.vue'
 
-// 角色徽标补充权限说明（external 等非常规角色用户常不知道边界）
 const ROLE_TIPS: Record<string, string> = { external: '外部协作者：可查看公开数据，审批/报销等功能需队长开通' }
 
 const me = computed(() => auth.me)
 const config = computed(() => auth.config)
 const exchanging = computed(() => auth.phase === 'exchanging')
-// “记住上次登录”：登录成功后后端写入非 HttpOnly 的 nec_last_login Cookie（30 天，仅展示信息）
 const last = computed(() => getLastLogin())
 const roleTip = computed(() => (me.value.user?.role && ROLE_TIPS[me.value.user.role]) || '')
 
-// 账号密码登录（内联表单）
 const showPwdForm = ref(false)
 const pwdUser = ref('')
 const pwdPass = ref('')
@@ -37,7 +34,6 @@ async function submitPwd() {
   }
 }
 
-/** 登出后回首页：停留在登录门控/管理 Tab 会因 401 显示错误卡片（switchTab 在 portal 层，故在调用处跳转而不下沉进 shared/auth） */
 async function onLogout() {
   await logout()
   switchTab('home')
@@ -45,41 +41,36 @@ async function onLogout() {
 </script>
 
 <template>
-  <div id="user-box" class="text-xs flex items-center gap-2">
+  <div id="user-box" class="user-box text-xs flex flex-wrap items-center justify-end gap-2 min-w-0">
     <template v-if="me.authenticated && me.user">
-      <img v-if="me.user.avatar_url" :src="me.user.avatar_url" class="w-6 h-6 rounded-full" alt="" />
- <span class="font-medium text-nec-navy">{{ me.user.name }}</span>
-      <span class="px-1.5 py-0.5 rounded text-[10px] text-white" :title="roleTip || undefined"
-            :style="roleTip ? 'background:var(--nec-cyan);cursor:help' : 'background:var(--nec-cyan)'">{{ me.user.role || '队员' }}</span>
-      <span v-if="me.user.group" class="text-gray-400 hidden sm:inline">{{ me.user.group }}</span>
-      <button @click="onLogout" class="text-gray-400 hover:text-gray-600 ml-1">登出</button>
+      <img v-if="me.user.avatar_url" :src="me.user.avatar_url" class="w-7 h-7 rounded-full" alt="" />
+      <span class="font-medium text-nec-navy min-w-0">{{ me.user.name }}</span>
+      <span class="px-2 py-0.5 rounded-full text-[10px] text-white bg-nec-navy" :title="roleTip || undefined">{{ me.user.role || '队员' }}</span>
+      <span v-if="me.user.group" class="text-nec-gray hidden sm:inline">{{ me.user.group }}</span>
+      <button @click="onLogout" class="min-h-11 sm:min-h-0 text-nec-gray hover:text-nec-navy ml-1">登出</button>
     </template>
     <template v-else-if="exchanging">
-      <!-- OAuth 回跳兑换会话中：过渡态占位，避免闪现"未登录" -->
-      <span class="inline-block w-3.5 h-3.5 border-2 border-gray-200 border-t-nec-cyan rounded-full animate-spin"></span>
-      <span class="text-gray-500">飞书登录中…</span>
+      <span class="inline-block w-3.5 h-3.5 border-2 border-nec-line border-t-nec-cyan rounded-full animate-spin"></span>
+      <span class="text-nec-gray">飞书登录中…</span>
     </template>
     <template v-else-if="config.loginEnabled">
       <template v-if="last && last.name">
-        <img v-if="last.avatar_url" :src="last.avatar_url" class="w-6 h-6 rounded-full opacity-70" alt="" />
-        <span class="text-xs text-gray-400" :title="last.at ? new Date(last.at).toLocaleString('zh-CN') : ''">上次登录：{{ last.name }}</span>
+        <img v-if="last.avatar_url" :src="last.avatar_url" class="w-7 h-7 rounded-full opacity-70" alt="" />
+        <span class="hidden md:inline text-xs text-nec-gray" :title="last.at ? new Date(last.at).toLocaleString('zh-CN') : ''">上次登录：{{ last.name }}</span>
       </template>
- <button @click="startLogin" class="px-3 py-1 rounded text-white bg-nec-navy">{{ last && last.name ? '以 ' + last.name + ' 继续登录' : '飞书登录' }}</button>
+      <button @click="startLogin" class="min-h-11 sm:min-h-9 px-3 py-1.5 rounded-full text-white bg-nec-navy">{{ last && last.name ? '以 ' + last.name + ' 继续登录' : '飞书登录' }}</button>
     </template>
-    <!-- 账号密码登录：本地账号（实习生等无飞书身份成员），与飞书登录互斥展开 -->
-    <button v-if="!showPwdForm" @click="showPwdForm = true" class="text-gray-400 hover:text-gray-600">账号登录</button>
-    <form v-else class="flex items-center gap-1" @submit.prevent="submitPwd">
+    <button v-if="!showPwdForm" @click="showPwdForm = true" class="min-h-11 sm:min-h-0 text-nec-gray hover:text-nec-navy">账号登录</button>
+    <form v-else class="flex flex-wrap items-center justify-end gap-2 min-w-0" @submit.prevent="submitPwd">
       <input v-model="pwdUser" placeholder="账号" autocomplete="username"
-             class="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs" :disabled="pwdBusy" />
+             class="w-24 min-h-11 px-2 py-1 border border-nec-line rounded-lg text-nec-ink" :disabled="pwdBusy" />
       <input v-model="pwdPass" type="password" placeholder="密码" autocomplete="current-password"
-             class="w-20 px-1.5 py-1 border border-gray-200 rounded text-xs" :disabled="pwdBusy" />
-      <button type="submit" class="px-2 py-1 rounded text-white text-xs" style="background:var(--nec-cyan)"
-              :disabled="pwdBusy">{{ pwdBusy ? '登录中…' : '登录' }}</button>
-      <button type="button" class="text-gray-400 hover:text-gray-600" :disabled="pwdBusy" @click="showPwdForm = false; pwdErr = ''">取消</button>
+             class="w-24 min-h-11 px-2 py-1 border border-nec-line rounded-lg text-nec-ink" :disabled="pwdBusy" />
+      <button type="submit" class="min-h-11 px-3 py-1 rounded-full text-white bg-nec-navy" :disabled="pwdBusy">{{ pwdBusy ? '登录中…' : '登录' }}</button>
+      <button type="button" class="min-h-11 text-nec-gray hover:text-nec-navy" :disabled="pwdBusy" @click="showPwdForm = false; pwdErr = ''">取消</button>
     </form>
   </div>
-  <div v-if="pwdErr" class="text-xs mt-1" style="color:var(--nec-red, #c0392b)">{{ pwdErr }}</div>
+  <div v-if="pwdErr" class="text-xs mt-1 text-[color:var(--nec-danger)]">{{ pwdErr }}</div>
 
-  <!-- 登录错误提示：内联横幅（替代原生 alert），可手动关闭/重试 -->
   <AuthToast />
 </template>

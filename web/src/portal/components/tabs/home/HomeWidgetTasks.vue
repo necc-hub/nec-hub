@@ -108,28 +108,30 @@ const syncNote = computed(() => {
 </script>
 
 <template>
-  <p v-if="failed" class="text-sm text-gray-400">加载失败，请刷新重试。</p>
+  <p v-if="failed" class="text-sm text-nec-gray">加载失败，请刷新重试。</p>
   <template v-else-if="source === 'feishu' || list !== null">
     <div class="flex items-center justify-between gap-2 mb-1">
-      <p class="text-xs" :class="syncStale ? 'text-gray-400' : 'text-gray-500'">{{ syncNote }}</p>
+      <p class="text-xs text-nec-gray">{{ syncNote }}</p>
       <button @click="refreshTasks" :disabled="refreshing"
-              class="text-xs px-2 py-1 rounded border border-gray-200 bg-white text-gray-500 hover:text-gray-700 disabled:opacity-50 shrink-0">
+              class="min-h-11 sm:min-h-0 text-xs px-3 py-1.5 rounded-full border border-nec-line bg-white text-nec-gray hover:text-nec-navy disabled:opacity-50 shrink-0">
         {{ refreshing ? '刷新中…' : '刷新' }}
       </button>
     </div>
     <template v-if="!rows.length">
-      <p class="text-sm text-gray-400">{{ source === 'feishu' ? '没有未完成的飞书任务 🎉' : (myName ? '暂无与你相关的未完成任务 🎉' : '登录后只看你的任务') }}</p>
-      <p class="text-xs text-gray-400 mt-1.5">{{ source === 'feishu' ? '去「我的任务」Tab 查看全部或管理绑定。' : (myName ? '去「我的任务」Tab 查看全部；在飞书任务中把自己加为负责人，任务就会出现在这里。' : '') }}</p>
+      <p class="text-sm text-nec-gray">{{ source === 'feishu' ? '没有未完成的飞书任务 🎉' : (myName ? '暂无与你相关的未完成任务 🎉' : '登录后只看你的任务') }}</p>
+      <p class="text-xs text-nec-gray mt-1.5">{{ source === 'feishu' ? '去「我的任务」Tab 查看全部或管理绑定。' : (myName ? '去「我的任务」Tab 查看全部；在飞书任务中把自己加为负责人，任务就会出现在这里。' : '') }}</p>
     </template>
-    <ul v-else class="divide-y divide-gray-100">
-      <li v-for="(t, i) in rows" :key="i" class="py-1.5 flex items-baseline gap-2 flex-wrap">
-        <a v-if="t.url" :href="t.url" target="_blank" class="flex-1 min-w-0 truncate hover:underline">{{ t.title }}</a>
-        <span v-else class="flex-1 min-w-0 truncate">{{ t.title }}</span>
-        <span class="text-xs px-1.5 py-0.5 rounded text-white shrink-0" :style="`background:${t.color}`">{{ t.status }}</span>
-        <span class="text-xs text-gray-400 mono shrink-0">{{ fmtDashDate(t.deadline) }}</span>
+    <ul v-else class="home-task-list">
+      <li v-for="(t, i) in rows" :key="i" class="home-task-row">
+        <a v-if="t.url" :href="t.url" target="_blank" rel="noopener noreferrer" class="home-task-title hover:underline">{{ t.title }}</a>
+        <span v-else class="home-task-title">{{ t.title }}</span>
+        <span class="home-task-meta">
+          <span class="home-status"><i aria-hidden="true" :style="`background:${t.color}`"></i>{{ t.status }}</span>
+          <time class="mono text-nec-gray">{{ fmtDashDate(t.deadline) }}</time>
+        </span>
       </li>
     </ul>
   </template>
-  <p v-else class="text-sm text-gray-400">加载中…</p>
+  <p v-else class="text-sm text-nec-gray">加载中…</p>
   <p v-if="refreshErr" class="text-xs text-[#C22E2E] mt-2">{{ refreshErr }}</p>
 </template>

@@ -35,16 +35,16 @@ function moreGroupLabel(tab: TabId): string {
 </script>
 
 <template>
-  <nav class="bg-white shadow-sm">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 text-sm font-medium text-gray-500 overflow-x-auto whitespace-nowrap scrollbar-hide">
+  <nav class="portal-tabs bg-white border-y border-nec-line">
+    <div class="portal-tab-scroll max-w-7xl mx-auto px-4 sm:px-6 flex gap-4 sm:gap-6 text-sm font-medium text-nec-gray overflow-x-auto whitespace-nowrap scrollbar-hide">
       <template v-for="tab in TAB_IDS" :key="tab">
         <span v-if="tabs.more && moreGroupLabel(tab) && gateVisible(tab)"
-              class="self-center text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-400 shrink-0 -mr-2">{{ moreGroupLabel(tab) }}</span>
+              class="self-center text-[10px] px-1.5 py-0.5 rounded bg-nec-fog text-nec-gray shrink-0 -mr-2">{{ moreGroupLabel(tab) }}</span>
         <button v-show="isTabVisible(tab)" :data-tab="tab" :id="tab === 'drawing-review' ? 'tab-btn-drawing-review' : undefined"
                 :class="btnClass(tab)" @click="onClick(tab)">{{ TAB_LABELS[tab] }}</button>
       </template>
       <button id="nav-more-btn" @click="toggleMoreTabs"
-              class="py-3 shrink-0 text-gray-400 hover:text-gray-600"
+              class="min-h-11 px-1 shrink-0 text-nec-gray hover:text-nec-navy"
               :class="{ 'tab-active': MORE_TABS.includes(tabs.active) }">{{ tabs.more ? '收起 ▴' : '更多 ▾' }}</button>
     </div>
   </nav>
