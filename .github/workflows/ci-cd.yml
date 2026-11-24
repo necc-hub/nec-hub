@@ -29,7 +29,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm --prefix web ci
       - run: npm run types
+      # GEO 构建测试会校验 public/index.html 与各应用构建产物的 canonical / robots / JSON-LD
+      - run: npm run build:web
       - run: npm run test:ci
 
   deploy:

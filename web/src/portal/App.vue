@@ -84,7 +84,11 @@ watch(() => auth.tick, () => {
   </main>
 
   <footer class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-xs text-nec-gray leading-relaxed">
-    NEC 团队 AI 中台 · BUILT TO DAWN — KEEP BUILDING<br />
-    <a href="/brand/" class="inline-flex min-h-11 items-center hover:underline text-nec-navy font-bold">→ NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
+    常州工 NEC · NEC Hub · BUILT TO DAWN — KEEP BUILDING<br />
+    <a href="/about/" class="inline-flex min-h-11 items-center hover:underline text-nec-navy font-bold">→ 关于 NEC 与公开边界</a>
+    <span aria-hidden="true" class="mx-2">·</span>
+    <a href="/brand/" class="inline-flex min-h-11 items-center hover:underline text-nec-navy font-bold">NEC 品牌主视觉（Logo / PPT 模板 / VI 规范）</a>
+    <span aria-hidden="true" class="mx-2">·</span>
+    <a href="/llms.txt" class="inline-flex min-h-11 items-center hover:underline text-nec-navy font-bold">AI 可读摘要</a>
   </footer>
 </template>

@@ -5,6 +5,7 @@
 - 生产门户：<https://hub.newenergycoder.club>
 - MCP 端点（Agent 接入）：`https://hub.newenergycoder.club/mcp`（streamable HTTP / JSON-RPC；协议元数据公开，业务读工具按工具要求验证 `user_token`，写操作需 `Authorization: Bearer <MCP_TOKEN>`）；token 生成 `npm run mcp:token` + `wrangler secret put MCP_TOKEN`，桌面 IDE 一键接入 `npm run mcp:setup`，详见 [`docs/IDE接入指南.md`](docs/IDE接入指南.md)
 - 源码：GitHub [necc-hub/nec-hub](https://github.com/necc-hub/nec-hub) · Gitee 镜像 [darrenpig/nec-hub](https://gitee.com/darrenpig/nec-hub)
+- 公开发现入口：`/about/`（可引用介绍与 FAQ）· `/llms.txt` / `/llms-full.txt`（AI 可读事实摘要）· `/robots.txt` · `/sitemap.xml`。只有 `src/shared/discovery.ts` 登记的公开页允许索引；其余门户工作区运行时与构建期均为 `noindex`。
 
 ## 线上内容（截至 2026-10-16）
 
@@ -164,6 +165,9 @@ Cron（`wrangler.jsonc` triggers，2 条 + 时间窗调度）：`*/8 * * * *` �
 | 路径 | 说明 |
 |---|---|
 | `GET /` | 门户（15 个 Tab：我的首页 / 我的任务 / 图纸评审 / 报销 / 任务排期 / 赛季目标 / 应用广场 / Skill 中心 / 资料页 / 开源仓库 / 硬件评审 / 合同审批 / 数据看板 / PRD 看板 / NEC-MCP；hash 路由深链 `/#/<tab>`） |
+| `GET /about/` | 公开介绍页（品牌、站点职责、公开项目与 FAQ；可被搜索 / AI 引用） |
+| `GET /robots.txt` · `/sitemap.xml` | 爬虫规则与公开页面站点地图（规范域名才允许收录，内部工作区 `noindex`） |
+| `GET /llms.txt` · `/llms-full.txt` | AI 搜索 / Agent 可读事实摘要与完整公开说明 |
 | `POST /mcp` | MCP streamable HTTP 端点（JSON-RPC；写操作需 `MCP_TOKEN`） |
 | `POST /auth/feishu` · `POST /auth/logout` · `GET /api/whoami` | 飞书 OAuth 登录 / 登出 / 当前用户与角色 |
 | `GET /api/config` | 公开配置（飞书 App ID、登录是否启用） |

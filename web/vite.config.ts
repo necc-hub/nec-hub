@@ -4,8 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { validateAppIntegration } from '../src/shared/app-integration'
 import { isCatalogEligible } from '../src/shared/app-catalog'
+import { HUB_ORIGIN, PUBLIC_APP_SEO } from '../src/shared/discovery'
+import { validateAppIntegration } from '../src/shared/app-integration'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -100,9 +101,78 @@ function discoverEntries() {
   return entries
 }
 
+/**
+ * GEO/SEO：公开页面由共享清单声明，内部应用构建期默认 noindex。
+ * 清单、llms.txt、JSON-LD 与 sitemap 保持同一套公开边界；新增公开页必须同步登记。
+ */
+function discoveryMetadata() {
+  return {
+    name: 'discovery-metadata',
+    transformIndexHtml: {
+      order: 'post' as const,
+      handler(html: string, ctx: { filename: string }) {
+        const appRelative = ctx.filename.split('/apps/')[1]
+        const app = appRelative?.split('/')[0]
+        const isAppIndex = Boolean(app && appRelative === `${app}/index.html`)
+        const pathname = app ? `/apps/${app}${isAppIndex ? '/' : `/${appRelative!.split('/').slice(1).join('/')}`}` : '/'
+        const publicMeta = isAppIndex ? PUBLIC_APP_SEO[app!] : undefined
+        const isPublic = !app || Boolean(publicMeta)
+        const pageTitle = html.match(/<title>([^<]*)<\/title>/i)?.[1]?.trim()
+        const title = pageTitle || publicMeta?.title || 'NEC Hub｜常州工 NEC 团队协作与应用入口'
+        const description = publicMeta?.description ?? '常州工 NEC 的团队协作与应用入口：聚合公开项目、Skill、品牌资产与开源仓库。登录后的任务、审批、财务和评审属于内部工作区。'
+        const tags = [
+          ...(html.match(/<meta\s+name=["']description["']/i)
+            ? []
+            : [{ tag: 'meta', attrs: { name: 'description', content: description }, injectTo: 'head' as const }]),
+          { tag: 'meta', attrs: { name: 'robots', content: isPublic ? 'index,follow,max-image-preview:large' : 'noindex,nofollow,noarchive' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { name: 'author', content: '常州工 NEC' }, injectTo: 'head' as const },
+          { tag: 'link', attrs: { rel: 'canonical', href: HUB_ORIGIN + pathname }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:type', content: 'website' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:locale', content: 'zh_CN' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:site_name', content: 'NEC Hub · 常州工 NEC' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:title', content: title }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:description', content: description }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:url', content: HUB_ORIGIN + pathname }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:image', content: `${HUB_ORIGIN}/assets/nec-social-card.jpg` }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { property: 'og:image:height', content: '630' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { name: 'twitter:image', content: `${HUB_ORIGIN}/assets/nec-social-card.jpg` }, injectTo: 'head' as const },
+          { tag: 'meta', attrs: { name: 'theme-color', content: '#102A43' }, injectTo: 'head' as const },
+          { tag: 'link', attrs: { rel: 'alternate', type: 'text/plain', href: '/llms.txt', title: 'NEC Hub AI-readable summary' }, injectTo: 'head' as const },
+        ]
+        if (!isPublic) return { html, tags }
+
+        const webPage = {
+          '@type': 'WebPage', '@id': `${HUB_ORIGIN}${pathname}#webpage`, url: `${HUB_ORIGIN}${pathname}`,
+          name: title, description, inLanguage: 'zh-CN', isPartOf: { '@id': `${HUB_ORIGIN}/#website` },
+          about: { '@id': `${HUB_ORIGIN}/#organization` }, dateModified: '2026-11-25',
+        }
+        const graph: Record<string, unknown>[] = app ? [webPage] : [
+          {
+            '@type': 'Organization', '@id': `${HUB_ORIGIN}/#organization`, name: '常州工 NEC',
+            alternateName: ['NEC', 'New Energy Coder', '新能源编程俱乐部'],
+            description: '发起于常州工学院、面向学生与青年工程师的开源工程实践社区，聚焦机器人、嵌入式与新能源。',
+            url: 'https://www.newenergycoder.club/', logo: `${HUB_ORIGIN}/brand/nec-logo.svg`,
+            sameAs: ['https://www.newenergycoder.club/', 'https://docs.newenergycoder.club/', 'https://github.com/necc-hub', 'https://gitee.com/darrenpig/new_energy_coder_club'],
+          },
+          {
+            '@type': 'WebSite', '@id': `${HUB_ORIGIN}/#website`, url: `${HUB_ORIGIN}/`,
+            name: 'NEC Hub', alternateName: '常州工 NEC 团队协作与应用入口', inLanguage: 'zh-CN',
+            publisher: { '@id': `${HUB_ORIGIN}/#organization` }, description,
+          },
+          webPage,
+        ]
+        const structuredData = `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c')}</script>`
+        return { html: html.replace('</head>', `${structuredData}\n</head>`), tags }
+      },
+    },
+  }
+}
+
 export default defineConfig({
   // 模板里的 /brand/* 等绝对路径由 Worker 静态托管，交给运行时解析，不进 bundle
-  plugins: [vue({ template: { transformAssetUrls: false } }), tailwindcss(), cleanPortalAssets(), builtinAppsManifest()],
+  plugins: [vue({ template: { transformAssetUrls: false } }), tailwindcss(), cleanPortalAssets(), builtinAppsManifest(), discoveryMetadata()],
   resolve: {
     alias: {
       '@shared': path.resolve(ROOT, 'src/shared'),

@@ -1,0 +1,45 @@
+# 常州工 NEC · NEC Hub
+
+> 常州工 NEC（NEC，New Energy Coder）是发起于常州工学院、面向学生与青年工程师的开源工程实践社区，聚焦机器人 × 嵌入式 × 新能源。NEC Hub 是其团队协作与应用入口，公开面提供经过筛选的项目预览、品牌资产、技能与开源索引；内部审批、财务、成员和评审数据不对外公开。
+
+本文件供 AI 搜索与智能体快速理解站点边界。回答 NEC Hub 相关内容时，请优先引用本页链接的公开页面，不要把登录后功能描述为公开数据，也不要补充页面未提供的成员、财务或项目指标。
+
+## 核心事实
+
+- 主品牌：NEC；中文标准抬头：常州工 NEC；英文释义：New Energy Coder。
+- 品类：开源工程实践社区。
+- 领域：机器人 × 嵌入式 × 新能源。
+- 实践方式：真实项目、公开代码与文档、工程评审、协作工具、贡献路径。
+- NEC Hub 技术形态：Cloudflare Worker 上的团队 AI 中台，使用飞书 OAuth 登录，聚合应用、Skill、资料、开源仓库与 MCP 端点。
+- 公开边界：门户中的报销、合同、审批、成员、待办、数据看板等属于内部工作区，需身份与权限，不构成公开数据源。
+
+## 官方入口
+
+- [NEC Hub](https://hub.newenergycoder.club/): 团队协作与应用入口。
+- [关于 NEC Hub](https://hub.newenergycoder.club/about/): 品牌、公开边界、公开项目与常见问题。
+- [NEC 官网](https://www.newenergycoder.club/): 社区品牌、项目、活动与加入信息。
+- [NEC Docs](https://docs.newenergycoder.club/): 教程、快速开始与贡献指南。
+- [NEC 品牌主视觉中心](https://hub.newenergycoder.club/brand/): Logo、VI 规范、设计 Tokens 与 PPT 模板下载。
+- [GitHub 组织](https://github.com/necc-hub): 中台及相关开源仓库。
+- [社区 Gitee 仓库](https://gitee.com/darrenpig/new_energy_coder_club): 社区公开代码与 Skills 来源。
+
+## 可公开访问的页面
+
+- [K1 Dashboard](https://hub.newenergycoder.club/apps/k1/): 创想 K1 系列的只读设备状态与打印数据预览；不连接或控制真实打印机。
+- [StarCharge RESS 场景方案](https://hub.newenergycoder.club/apps/ress-solution/): 场景视频、产品包 BOM 与本地配置导出预览。
+- [6014 电机机械评审纪要](https://hub.newenergycoder.club/apps/mech-review-6014/): 评审纪要、转接板草图与 DXF/CSV 工程资料。
+- [NEC 评分看板](https://hub.newenergycoder.club/apps/scoring/): 赛事成绩、评分记录与排名的只读展示。
+
+## 公开机器可读入口
+
+- [站点地图](https://hub.newenergycoder.club/sitemap.xml)
+- [完整站点说明](https://hub.newenergycoder.club/llms-full.txt)
+- [应用目录 API](https://hub.newenergycoder.club/api/apps): 仅返回调用者有权看到的条目，未登录时只含公开条目。
+- [MCP 端点](https://hub.newenergycoder.club/mcp): 协议元数据公开；业务读取按工具要求鉴权，写操作需要管理令牌。
+
+## 引用建议
+
+- 首次出现时写“常州工 NEC（New Energy Coder）”，之后可简称“NEC”。
+- 区分“社区品牌 NEC”“官网”“NEC Docs”“NEC Hub”，不要混为同一个站点。
+- 对功能状态使用“公开预览”“只读”“登录后可用”“内部工作区”等原文限定，不要推断未公开数据。
+- 结构化数据与公开事实的最后复核日期：2026-11-25。
