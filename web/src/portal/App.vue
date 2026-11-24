@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// NEC 团队 AI 中台门户：Hero + TabNav + 16 个 Tab（所有面板常驻挂载、v-show 切换）。
-import { computed, onMounted, watch } from 'vue'
+// NEC 团队 AI 中台门户：Hero + TabNav + 当前可访问 Tab（离开即卸载）。
+import { computed, onMounted, watch, type Component } from 'vue'
 import HeroHeader from './components/HeroHeader.vue'
 import TabNav from './components/TabNav.vue'
 import GoalBanner from './components/GoalBanner.vue'
@@ -21,13 +21,35 @@ import DashboardTab from './components/tabs/DashboardTab.vue'
 import PrdTab from './components/tabs/PrdTab.vue'
 import AgentTab from './components/tabs/AgentTab.vue'
 import AdminTab from './components/tabs/AdminTab.vue'
-import { tabs, initTabs, switchTab, applyHashRoute, replayLoginReturn } from './composables/useTabs'
-import { auth, bootAuth } from '@shared/auth'
+import { tabs, initTabs, switchTab, applyHashRoute, replayLoginReturn, gateVisible, TAB_LABELS, type TabId } from './composables/useTabs'
+import { auth, bootAuth, tryStartLogin } from '@shared/auth'
 import { loadTodos } from './composables/useBanners'
+import { pendingHash } from '@shared/pendingTab'
 
 const mainWidthClass = computed(() =>
   tabs.active === 'home' || tabs.active === 'apps' || tabs.active === 'dashboard' ? 'max-w-7xl' : 'max-w-5xl'
 )
+
+const TAB_COMPONENTS: Record<TabId, Component> = {
+  home: HomeTab,
+  'my-tasks': MyTasksTab,
+  'drawing-review': DrawingReviewTab,
+  reimburse: ReimburseTab,
+  'task-schedule': TaskScheduleTab,
+  'season-goals': SeasonGoalsTab,
+  apps: AppsTab,
+  skills: SkillsTab,
+  docs: DocsTab,
+  repos: ReposTab,
+  'hardware-review': HardwareReviewTab,
+  'contract-approval': ContractApprovalTab,
+  dashboard: DashboardTab,
+  prd: PrdTab,
+  agent: AgentTab,
+  admin: AdminTab,
+}
+const activeTabComponent = computed(() => gateVisible(tabs.active) ? TAB_COMPONENTS[tabs.active] : HomeTab)
+const authNoticeTab = computed(() => auth.me.authenticated ? null : pendingHash.tab as TabId | null)
 
 onMounted(async () => {
   initTabs()
@@ -45,26 +67,20 @@ watch(() => auth.tick, () => {
   <HeroHeader />
   <TabNav />
 
-  <GoalBanner />
-  <TodoBar />
+  <template v-if="auth.phase === 'ready' && auth.me.authenticated">
+    <GoalBanner />
+    <TodoBar />
+  </template>
+
+  <div v-if="authNoticeTab && !auth.me.authenticated" class="portal-auth-notice max-w-5xl mx-auto mt-4 px-4 sm:px-6" role="status">
+    <div class="portal-card px-5 py-4 flex flex-wrap items-center gap-3">
+      <span class="text-sm text-nec-navy flex-1 min-w-44">「{{ TAB_LABELS[authNoticeTab] }}」登录后可见，登录成功后返回该页面。</span>
+      <button type="button" class="portal-button portal-button--primary" @click="tryStartLogin">登录查看</button>
+    </div>
+  </div>
 
   <main class="portal-main mx-auto px-4 sm:px-6 py-6 sm:py-8" :class="mainWidthClass">
-    <HomeTab v-show="tabs.active === 'home'" @goto="switchTab" />
-    <MyTasksTab v-show="tabs.active === 'my-tasks'" />
-    <DrawingReviewTab v-show="tabs.active === 'drawing-review'" />
-    <ReimburseTab v-show="tabs.active === 'reimburse'" />
-    <TaskScheduleTab v-show="tabs.active === 'task-schedule'" />
-    <SeasonGoalsTab v-show="tabs.active === 'season-goals'" />
-    <AppsTab v-show="tabs.active === 'apps'" />
-    <SkillsTab v-show="tabs.active === 'skills'" />
-    <DocsTab v-show="tabs.active === 'docs'" />
-    <ReposTab v-show="tabs.active === 'repos'" />
-    <HardwareReviewTab v-show="tabs.active === 'hardware-review'" />
-    <ContractApprovalTab v-show="tabs.active === 'contract-approval'" />
-    <DashboardTab v-show="tabs.active === 'dashboard'" />
-    <PrdTab v-show="tabs.active === 'prd'" />
-    <AgentTab v-show="tabs.active === 'agent'" />
-    <AdminTab v-show="tabs.active === 'admin'" />
+    <component :is="activeTabComponent" :key="tabs.active" @goto="switchTab" />
   </main>
 
   <footer class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 text-xs text-nec-gray leading-relaxed">

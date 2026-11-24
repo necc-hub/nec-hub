@@ -27,6 +27,10 @@ const HOME_WIDGET_DEFS: Record<string, { title: string; comp: Component }> = {
   'goals': { title: '赛季目标', comp: HomeWidgetGoals },
   'inventory': { title: '物资查询', comp: HomeWidgetInventory },
 }
+const HOME_INTERNAL_WIDGET_IDS = new Set(['my-tasks', 'my-reimburse', 'goals', 'inventory'])
+function isHomeWidgetVisible(id: string): boolean {
+  return (auth.phase === 'ready' && auth.me.authenticated) || !HOME_INTERNAL_WIDGET_IDS.has(id)
+}
 const HOME_SOURCE_LABEL: Record<string, string> = { personal: '个人视图', group: '组视图', default: '团队视图' }
 
 interface HomeWidget { id: string; title?: string }
@@ -34,7 +38,10 @@ interface HomeWidget { id: string; title?: string }
 const widgets = ref<HomeWidget[]>([])
 const HOME_SECONDARY_IDS = new Set(['my-apps', 'docs'])
 const sameHomeRegion = (a: HomeWidget, b: HomeWidget) => HOME_SECONDARY_IDS.has(a.id) === HOME_SECONDARY_IDS.has(b.id)
-const indexedWidgets = computed(() => widgets.value.map((widget, index) => ({ widget, index })))
+const indexedWidgets = computed(() => widgets.value.filter(({ id }) => isHomeWidgetVisible(id)).map((widget, index) => {
+  // 保持原布局索引，跨区/可见性过滤不会导致拖拽保存错卡片。
+  return { widget, index: widgets.value.indexOf(widget) }
+}))
 const primaryWidgets = computed(() => indexedWidgets.value.filter(({ widget }) => !HOME_SECONDARY_IDS.has(widget.id)))
 const secondaryWidgets = computed(() => indexedWidgets.value.filter(({ widget }) => HOME_SECONDARY_IDS.has(widget.id)))
 const homeLoading = ref(true)
@@ -78,6 +85,7 @@ function noteHomeFreshness(d: any) {
 provide('noteHomeFreshness', noteHomeFreshness)
 
 const sourceLabel = computed(() => {
+  if (auth.phase !== 'ready' || !auth.me.authenticated) return '（公开视图）'
   const base = `（${HOME_SOURCE_LABEL[source.value] || source.value}${source.value === 'group' && group.value ? ' · ' + group.value : ''}${freshNote.value}）`
   return base
 })
@@ -122,7 +130,8 @@ async function loadHome() {
   freshNote.value = ''
   source.value = src
   group.value = grp
-  widgets.value = list
+  widgets.value = list.filter(widget => isHomeWidgetVisible(widget.id))
+  if (!auth.me.authenticated) freshNote.value = ''
   shared.value = createShared()
   homeLoading.value = false
 }
@@ -327,7 +336,11 @@ onMounted(() => {
   loadHomeActivity()
   loadTodoCards()
 })
-watch(() => auth.tick, () => { loadHome(); loadTodoCards() })
+watch(() => auth.tick, () => {
+  if (!auth.me.authenticated) { showPrompt.value = false; dragIdx.value = -1 }
+  loadHome()
+  loadTodoCards()
+})
 watch(() => todoBar.data, () => applyTodoCounts())
 </script>
 
@@ -340,8 +353,8 @@ watch(() => todoBar.data, () => applyTodoCounts())
         <span id="home-source" class="home-heading__meta">{{ sourceLabel }}</span>
       </div>
       <div class="flex items-center gap-2 shrink-0">
-        <button @click="resetHome" id="home-reset-btn" v-show="auth.me.authenticated" class="portal-text-button">恢复默认</button>
-        <button @click="showPrompt = !showPrompt" id="home-edit-layout-btn" class="portal-text-button" :aria-expanded="showPrompt" aria-controls="home-prompt-box">{{ showPrompt ? '收起布局设置' : '编辑布局' }}</button>
+        <button @click="resetHome" id="home-reset-btn" v-if="auth.phase === 'ready' && auth.me.authenticated" class="portal-text-button">恢复默认</button>
+        <button v-if="auth.phase === 'ready' && auth.me.authenticated" @click="showPrompt = !showPrompt" id="home-edit-layout-btn" class="portal-text-button" :aria-expanded="showPrompt" aria-controls="home-prompt-box">{{ showPrompt ? '收起布局设置' : '编辑布局' }}</button>
       </div>
     </div>
     <div v-if="showPrompt" id="home-prompt-box" class="portal-card mb-6 p-5">

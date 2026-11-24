@@ -2,6 +2,7 @@
 import { reactive } from 'vue'
 import { auth, canAccessAdmin } from '@shared/auth'
 import { pendingHash } from '@shared/pendingTab'
+import { canViewPortalTab, PORTAL_INTERNAL_TABS, resolvePortalRoute } from '../utils/portalVisibility'
 
 export const TAB_IDS = ['home', 'my-tasks', 'drawing-review', 'reimburse', 'task-schedule', 'season-goals', 'apps', 'skills', 'docs', 'repos', 'hardware-review', 'contract-approval', 'dashboard', 'prd', 'agent', 'admin'] as const
 export type TabId = (typeof TAB_IDS)[number]
@@ -9,8 +10,8 @@ export type TabId = (typeof TAB_IDS)[number]
 // 低频 Tab（Skill 中心/资料页/开源仓库/硬件评审/合同审批）默认收进「更多」，保持导航高频入口精简
 export const MORE_TABS: TabId[] = ['skills', 'docs', 'repos', 'hardware-review', 'contract-approval']
 
-// 登录门控 Tab（gate-off）：未登录时始终隐藏；登录后，属「更多」分组的随折叠状态显隐
-export const GATE_TABS: TabId[] = ['drawing-review', 'hardware-review', 'contract-approval']
+// 登录门控 Tab：未登录与登录状态初始化期间均不可见，组件也不挂载。
+export const GATE_TABS: TabId[] = [...PORTAL_INTERNAL_TABS]
 
 // 管理门控 Tab：登录且角色命中 队长/组长/指导/管理员 才可见（展示侧开关，真正鉴权以后端 /api/admin/overview 为准）
 export const ADMIN_TABS: TabId[] = ['admin']
@@ -39,11 +40,13 @@ export const tabs = reactive({
   more: false,
 })
 
-/** 登录门控：图纸评审/硬件评审/合同审批登录后可见；管理 Tab 另需队长/组长/指导/管理员角色 */
+/** 登录门控：内部工作页仅在会话确认后可见；管理 Tab 另需管理角色。 */
 export function gateVisible(tab: TabId): boolean {
-  if (ADMIN_TABS.includes(tab)) return canAccessAdmin()
-  if (!GATE_TABS.includes(tab)) return true
-  return !!(auth.me.authenticated && auth.me.user)
+  return canViewPortalTab(tab, {
+    ready: auth.phase === 'ready',
+    authenticated: !!(auth.me.authenticated && auth.me.user),
+    isAdmin: canAccessAdmin(),
+  })
 }
 
 export function isTabVisible(tab: TabId): boolean {
@@ -52,16 +55,14 @@ export function isTabVisible(tab: TabId): boolean {
   return true
 }
 
-export function switchTab(tab: string, opts: { silent?: boolean } = {}): boolean {
+export function switchTab(tab: string, opts: { silent?: boolean; preservePending?: boolean } = {}): boolean {
   if (!(TAB_IDS as readonly string[]).includes(tab)) return false
   const t = tab as TabId
-  // 目标在「更多」分组里时先展开，否则视为当前不可见（如未登录时的图纸评审）
-  // gate-off 优先于「更多」折叠：未登录时登录门控 Tab 不可通过展开「更多」进入
-  if (!isTabVisible(t)) {
-    if (MORE_TABS.includes(t) && gateVisible(t)) tabs.more = true
-    else return false
-  }
+  // 门控关闭时绝不改变当前页面；调用方可在顶部显示登录提示。
+  if (!gateVisible(t)) return false
+  if (!isTabVisible(t) && MORE_TABS.includes(t)) tabs.more = true
   tabs.active = t
+  if (!opts.preservePending) pendingHash.tab = null
   if (!opts.silent) {
     const canonical = '#/' + tab
     if (location.hash !== canonical) history.replaceState(null, '', location.pathname + location.search + canonical)
@@ -77,15 +78,20 @@ export function parseHashTab(): string | null {
 }
 
 export function applyHashRoute() {
-  const tab = parseHashTab() || pendingHash.tab
+  const parsed = parseHashTab()
+  // 受限深链会规范化到首页；登录就绪后优先恢复已暂存且获准的目标。
+  const tab = resolvePortalRoute(parsed, pendingHash.tab, tabId =>
+    (TAB_IDS as readonly string[]).includes(tabId) && gateVisible(tabId as TabId)
+  )
   if (!tab) return
   if (switchTab(tab, { silent: true })) {
     pendingHash.tab = null
     const canonical = '#/' + tab
     if (location.hash !== canonical) history.replaceState(null, '', location.pathname + location.search + canonical)
   } else if ((TAB_IDS as readonly string[]).includes(tab)) {
-    // 目标 Tab 当前不可见（如未登录）：暂存待门控放开后重放，不再抹掉 hash
+    // 暂存受限目标供登录后恢复，同时将当前页面与 URL 留在公开首页。
     pendingHash.tab = tab
+    if (!gateVisible(tab as TabId)) switchTab('home', { preservePending: true })
   } else {
     // 未知 hash：落回首页
     pendingHash.tab = null

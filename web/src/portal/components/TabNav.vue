@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// 顶部 Tab 导航：更多分组展开/收起；登录门控 Tab（图纸评审/硬件评审/合同审批）未登录始终隐藏
+// 顶部 Tab 导航：更多分组展开/收起；内部工作页未登录始终隐藏
 // 更多展开时按组渲染小标题（工作/评审/资源）；组内无实际折叠成员的组不渲染（task-schedule、my-tasks 均在折叠组外）
 import { tabs, switchTab, toggleMoreTabs, TAB_IDS, TAB_LABELS, MORE_TABS, isTabVisible, gateVisible, type TabId } from '@portal/composables/useTabs'
 
@@ -43,7 +43,7 @@ function moreGroupLabel(tab: TabId): string {
         <button v-show="isTabVisible(tab)" :data-tab="tab" :id="tab === 'drawing-review' ? 'tab-btn-drawing-review' : undefined"
                 :class="btnClass(tab)" @click="onClick(tab)">{{ TAB_LABELS[tab] }}</button>
       </template>
-      <button id="nav-more-btn" @click="toggleMoreTabs"
+      <button v-if="MORE_TABS.some(gateVisible)" id="nav-more-btn" @click="toggleMoreTabs"
               class="min-h-11 px-1 shrink-0 text-nec-gray hover:text-nec-navy"
               :class="{ 'tab-active': MORE_TABS.includes(tabs.active) }">{{ tabs.more ? '收起 ▴' : '更多 ▾' }}</button>
     </div>
