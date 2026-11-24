@@ -11,6 +11,7 @@ import { resolveSession } from "./shared/session";
 import { resolveUserRole } from "./auth/role";
 import { domainZone } from "./domains/service";
 import { validateAppIntegration, type AppIntegration } from "./shared/app-integration";
+import { filterCatalogEntries } from "./shared/app-catalog";
 
 /** 应用广场条目（KV key: apps:index） */
 export interface AppEntry {
@@ -267,7 +268,7 @@ export async function readBuiltinManifest(env: Env, origin: string): Promise<Bui
 
 /**
  * GET /api/apps 的合并视图：builtin（visibility 视为 all）在前，注册表（按角色过滤后）在后。
- * 同名 r2 应用与 builtin 并存时标 shadows=true，由前端提示「R2 覆盖中」。
+ * 同名 r2 应用与 builtin 并存时标 shadows=true；重复/废弃/自镜像入口由 filterCatalogEntries 剔除。
  */
 export async function listPortalApps(env: Env, request: Request, ctx?: ExecutionContext): Promise<PortalAppEntry[]> {
   const origin = new URL(request.url).origin;
@@ -301,5 +302,5 @@ export async function listPortalApps(env: Env, request: Request, ctx?: Execution
       integration: a.integration ?? null,
     };
   });
-  return [...builtinEntries, ...registryEntries];
+  return filterCatalogEntries([...builtinEntries, ...registryEntries], builtinNames);
 }
