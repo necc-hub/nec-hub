@@ -8,6 +8,7 @@
     "noEmit": true,
     "jsx": "preserve",
     "skipLibCheck": true,
+    "resolveJsonModule": true,
     "types": ["vite/client"],
     "paths": {
       "@shared/*": ["./src/shared/*"],

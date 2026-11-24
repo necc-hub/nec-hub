@@ -22,7 +22,7 @@ export interface PrdItem {
   subs?: Record<string, Omit<PrdItem, "subs">>;
 }
 
-/** 初始看板 = PRD V2.1 §0 盘点基线（2026-10-24 刷新，含 FE-14~18）；后续用 update_prd 维护，KV prd:status 覆盖本默认值 */
+/** 初始看板 = PRD V2.1 盘点基线（2026-11-22 刷新，含 FE-14~20）；后续用 update_prd 维护，KV prd:status 覆盖本默认值 */
 export const DEFAULT_PRD_ITEMS: Record<string, PrdItem> = {
   "FE-01": { title: "飞书 OAuth 登录态与权限角色", priority: "P0", status: "partial", note: "真实登录已验证 + 登录体验优化（无感重登/保现场）；飞书内 JSAPI 免登未做" },
   "FE-02": { title: "数据基建落地与看板接入", priority: "P0", status: "partial", note: "灌数收口：物资12/财务6/目标6，名单组别 48/53；剩 5 人待确认" },
@@ -52,6 +52,15 @@ export const DEFAULT_PRD_ITEMS: Record<string, PrdItem> = {
   "FE-14": { title: "新增机图纸评审流程", priority: "P1", status: "done", note: "10 表配齐 + 询价比价 + 流程看板 + 群通知 + 阻塞告警 cron；飞书会议/ERP/MES 联调待办" },
   "FE-15": { title: "硬件评审流程", priority: "P1", status: "partial", note: "后端 + 独立应用页 + 评估报告流转已上线；核心流程卡片与评审 Tab 入口已就位，待真实数据走查" },
   "FE-16": { title: "合同审批流程", priority: "P1", status: "partial", note: "状态机 + 会签权限 + 前端可用性重构（12 项）已上线；待真实合同走查" },
+  "FE-19": { title: "域名分发系统", priority: "P1", status: "partial", note: "自助三级/四级域名 + 泛域名应用直达已上线；待登录态申请/释放一单端到端实测" },
+  "FE-20": {
+    title: "APP 互联互通", priority: "P0", status: "partial",
+    note: "P/I/B/D 声明、发布门槛、应用状态展示与 MCP 权限基线已交付；核心应用真实生产闭环待逐项验收",
+    subs: {
+      "K1": { title: "K1 Dashboard（静态预览）", priority: "P1", status: "partial", note: "P 级静态预览与局域网导航已上架；实时数据需鉴权只读中继，控制需独立授权与审计" },
+      "RESS": { title: "StarCharge RESS 方案展示", priority: "P2", status: "partial", note: "场景展示、25D 预览与 BOM 导出已交付；持久化/报价/提交等业务闭环未实现" },
+    },
+  },
 };
 
 const PRD_MILESTONES = [
@@ -59,6 +68,7 @@ const PRD_MILESTONES = [
   { id: "M2", title: "资产与智能", items: ["FE-03", "FE-04", "FE-05", "FE-08", "FE-10"] },
   { id: "M3", title: "个性化与自动化", items: ["FE-06", "FE-07", "FE-09", "FE-12", "FE-13"] },
   { id: "M4", title: "业务流程域", items: ["FE-14", "FE-15", "FE-16"] },
+  { id: "M5", title: "平台与应用", items: ["FE-19", "FE-20"] },
 ];
 
 export async function buildPrdBoard(env: Env): Promise<unknown> {
@@ -126,7 +136,7 @@ export async function toolUpdatePrd(args: Record<string, unknown>, env: Env, has
     for (const [pid, item] of Object.entries(DEFAULT_PRD_ITEMS)) {
       if (item.subs?.[id]) { parentId = pid; break; }
     }
-    if (!parentId) throw new Error(`未知需求 id：${id}（FE-01 ~ FE-18）`);
+    if (!parentId) throw new Error(`未知需求 id：${id}（FE-01 ~ FE-20）`);
   }
   const note = args.note != null ? String(args.note) : undefined;
 

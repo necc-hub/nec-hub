@@ -34,6 +34,7 @@
 | FE-12 Skill CI | ✅ | 已确认满足：`quality-check.yml` 强制校验 SKILL.md + PR 自动评论质量报告 |
 | FE-13 lark-cli 调研 | ✅ | 《lark-cli能力边界验证报告》已归档；结论：多维表格读写全自动化、应用版本发布可走 api 逃生舱（未实测）、定制工作台无 OpenAPI |
 | FE-14 图纸评审流程 | ✅ | 10 张逻辑表配齐 + 询价比价 + 流程看板（阻塞预警/甘特图）+ 群通知 + 阻塞告警 cron 已上线；审批侧五组端到端实测通过（V1.1 F-01）；**2026-10-15 增补**：库存手动导入兜底（`inventory.service.ts`，§13.7 验收 2，幂等可重复导入）、§11 待确认问题转决策跟踪表（7 项均附建议方案）、《灰度执行手册》归档；持续迭代（联想/BOM/6014 专项页） |
+| FE-19 域名分发系统 | 🔄 | 自助三级/四级域名申请 + 泛域名 R2 应用直达（deploy_app 零配置）+ 门户 `/apps/domains/` 页已上线；**2026-11-03 配置收口**：CF secrets + `*` 泛 DNS 生效，应用直达/404 引导实测通过，并修复 assets 层吞根路径（`run_worker_first: true`）；待登录态申请一单端到端实测 |
 
 ---
 
@@ -98,7 +99,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - **团队周报自动化（2026-10-16）**：`src/reports/weekly.ts` —— 周一 08:16–08:20（UTC+8）cron 聚合五张底表 + 仓库动态，与 KV `weekly:snapshot` 上周快照 diff 生成文案推群（可用 `FEISHU_BOT_WEBHOOK_WEEKLY_REPORT` 分流，缺省回落主 webhook）；`POST /api/reports/weekly/run` 队长/组长手动补发；13 例单测
 - **《NEC-HUB 模块优化评估报告 V1.0》（2026-10-16）**：已归档 docs/
 
-**缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建灌数收口走查（物资 12 / 财务 6 / 赛季目标 6 已灌，剩 5 人通讯录查无部门待人工确认，见 §0 FE-02）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、硬件评审/合同审批前端页面、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）；工作台 Level 3 切换待超管后台操作；图纸评审全流程集成（腾讯会议/ERP/MES）待联调。
+**缺口（本 PRD 覆盖）**：飞书内 JSAPI 免登端到端验证、三角色测试账号走查、数据基建灌数收口走查（物资 12 / 财务 6 / 赛季目标 6 已灌，剩 5 人通讯录查无部门待人工确认，见 §0 FE-02）、飞书视频会议企业授权与 ERP/MES 集成联调（未就绪前手动导入模板兜底）、D 组新建能力（飞书邮件通道 + refresh_token 持久化、真两级审批、48h 代理人升级，见主线对照文尾）；工作台 Level 3 切换待超管后台操作；图纸评审全流程集成（腾讯会议/ERP/MES）待联调。
 
 ## 5. 功能需求
 
@@ -493,7 +494,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 - ✅ `src/hardware-review/` 模块（flow/adapter/config/report 服务）+ 路由 `/api/hardware-review`（submit/list/start/detail/meeting/minutes/conclusion/rectify/report/assess/archive）。
 - ✅ 独立应用页 `public/apps/hardware-review/`（含看板卡片、状态筛选、详情、提交表单；状态色已收口至 VI 语义色）。
 - ✅ MCP `config_hardware_review` 工具；评估报告生成（`/report/generate`）与 pass/fail 流转（`/assess`）含事件日志。
-- ✅ `meeting.test.ts` 等用例覆盖；飞书会议预约走共享 `meeting/` 服务（未授权限时降级 mock）。待办：真实硬件评审数据走查、门户核心流程卡片与入口曝光。
+- ✅ `meeting.test.ts` 等用例覆盖；飞书会议预约走共享 `meeting/` 服务（未授权限时降级 mock）。门户入口已上线（应用广场核心流程卡片 + 更多→评审 Tab，2026-10-24 核实）。待办：真实硬件评审数据走查。
 
 ### FE-16 合同审批流程（P1）——审批域第一实例
 
@@ -513,7 +514,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 
 - ✅ `src/contract-approval/` 模块 + 路由 `/api/contract-approval`（submit/list/start/detail/start-review/action/resubmit/archive/comments）。
 - ✅ MCP `config_contract_approval`；`contract-approval.test.ts` 用例覆盖状态机全流转、单号格式（CA-日期-序号）、提交校验（必填/提交人不能兼任审批人）、会签与权限（非参与者不可审批、逐一通过、任一拒绝即整体拒绝、防重复审批）。
-- 待办：前端页面（《页面与Tab状态现状》P1-4 已立项：以图纸评审 Tab 为模板复制改造）、真实合同数据走查。
+- ✅ 前端已上线：合同审批 Tab（复用 Vue 应用）+ 2026-10-16 可用性重构 12 项（列表优先+抽屉表单）。待办：真实合同数据走查。
 
 ### FE-17 我的任务（P1）——飞书任务绑定与同步
 
@@ -532,7 +533,7 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 **进展（2026-10-14 深夜，已上线）**：
 
 - ✅ `src/my-tasks/` 模块：`GET /api/my-tasks`（Task v2 同步拉取，KV `my-tasks:<open_id>` 5 分钟缓存，`?refresh=1` 强刷）、`POST /api/my-tasks/unbind`（清授权 token 与缓存）。
-- ✅ 登录门禁（401 未登录）；`my-tasks.test.ts` 用例覆盖。待办：队员真实账号绑定走查（验收 1/2）、门户组件曝光。
+- ✅ 登录门禁（401 未登录）；`my-tasks.test.ts` 用例覆盖；门户「我的任务」Tab 已上线，首页 my-tasks widget 已与 /api/my-tasks 同源（2026-10-24 修复，未绑定回退 dashboard）。待办：队员真实账号绑定走查（验收 1/2）。
 
 ### FE-18 赛季目标收集与自动规划（P1）——FE-04 的专项应用
 
@@ -550,6 +551,28 @@ V1.0 方案定义的 MVP 已上线（`hub.newenergycoder.club`），门户四 Ta
 2. 自动规划结果与任务表按组聚合口径一致。
 
 **进展（2026-10-14 深夜，已上线）**：见 FE-04 尾段进展记录；18 条 vitest 用例全绿。待办：与看板 goals 区块及 `update_progress` 的数据流打通验证、真实目标数据收集。
+
+### FE-19 域名分发系统（P1）——成员自助三级/四级域名 + 泛域名应用直达
+
+**用户故事**：作为队员，我开发了自己的应用，希望不用找管理员就能拿到 `xxx.newenergycoder.club` 域名，指向我部署在 R2 / Vercel / Pages / 自建服务器上的项目。
+
+**需求描述**：
+
+- **自助申请**：飞书登录后在 `/apps/domains/` 申请三级域名（CNAME / A / AAAA，支持四级如 `my-app.dev.newenergycoder.club`，最多 3 级标签）；每人限 3 个（vars `DOMAIN_MAX_PER_USER`），队长/指导/管理员不受限并可释放任意记录。
+- **防抢注**：首标签按全量保留表校验（hub/www/api/docs 等 40+），深级标签拦高危词（hub/login/auth/admin/pay/sso）；CNAME 目标禁止指向根域自身（防回环）；重复申请返回 409。
+- **泛域名应用直达**：`*.newenergycoder.club/*` 路由 + Host 识别（`src/domains/wildcard.ts`），`deploy_app` 上架 R2 应用后零 DNS 配置即刻可访问；已登记外部目标与保留名透传回源不劫持。
+- **Cloudflare 自动落 DNS**：secrets `CF_API_TOKEN` + `CF_ZONE_ID` 驱动记录创建/删除；未配置时申请存 pending，配置后「重试同步」补建，系统不锁死。
+- **HTTPS 边界**：Universal SSL 只覆盖三级泛域名；四级及更深强制仅 DNS，证书由目标平台签发（申请时自动关闭代理并提示）。
+- **公开目录**：`GET /api/domains` 返回 active 记录（脱敏，无 open_id）。
+
+**验收标准**：
+
+1. 队员申请 CNAME 域名后，Cloudflare DNS 出现对应记录，`dig` 可解析；释放后记录同步删除。
+2. 保留名/超限/重复/非法目标分别返回 400/429/409/400；非本人删除返回 403。
+3. R2 已部署应用经 `https://<name>.newenergycoder.club` 直接可访问；已登记外部 CNAME 的子域名不被泛路由劫持。
+4. 四级域名申请强制 proxied=false 且响应 hint 含证书提示。
+
+**进展（2026-11-03 配置收口，实测通过）**：模块 `src/domains/`（types/cloudflare/service/index/wildcard）+ 门户应用页 `public/apps/domains/` + 使用手册已归档并注册进应用广场；cron 收敛规避免费版触发器上限；vitest 全量 310 用例全绿。2026-11-03 完成配置：`CF_API_TOKEN`/`CF_ZONE_ID` secrets 已写入、`*` 泛 DNS 记录（AAAA → `100::` 橙云）生效、`syncEnabled: true`；实测：已部署应用子域名（kv-assets）返回真实应用、未部署子域名根路径返回 404 引导 JSON、hub 门户无回归。修复 assets 层吞根路径问题（`run_worker_first: true`，否则子域名 `/` 被直接返回门户 index.html）。**待办**：登录态申请一单做 DNS 自动创建端到端实测；优化 backlog：KV 索引改 per-subdomain key 消并发写竞态、申请/释放推飞书群、MCP `apply_domain` 工具、域名到期回收与 DNS 对账 cron。
 
 ## 6. 非功能需求
 
@@ -632,6 +655,8 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | V2.0 修订 | 2026-10-14 三更 | **N-02 飞书邮箱通道 + 全量部署**：`src/feishu/mail.ts`（RFC 5822 EML 构造/建草稿/发送/profile 取发件地址，refresh_token 持久化续期）+ `send_mail` MCP 工具（第 20 个）+ 登录 scope 追加 `mail:user_mailbox.message:modify`；姓名→open_id 目录抽至共享模块 `feishu/member-directory`（meeting/mail 共用）；vitest 20 文件 200 用例全绿；全量部署生产；《主线整合与执行方案_V1.0》归档 docs/ |
 | V2.0 修订 | 2026-10-15 | §0 全面刷新（对齐代码现状与各 FE 进展：FE-03/04/05/06/07/10/12/13/14 升 ✅，FE-08/09 刷新为审批 PRD V1.1/V1.2 口径）；§4 现状盘点修订（域拆分架构、灌数进展、缺口清单更新） |
 | V2.1 | 2026-10-16 | **累积修订固化升版**（文件同步更名 `团队AI中台PRD_V2.1.md`）：FE-06 首页工作台升级（评审 12 项全落地，`e319e41`）；FE-16 合同审批可用性重构（评审 13 项落地 12，`72790bb`）；任务排期白底主题 + Git 式流线图（`3bc9df7`）；FE-08 报销台账 manage 接口 + 45 张采购发票 R-01 批次（`a072491`/`a9d2d1b`）；FE-01 登录体验优化（无感重登/auth.phase/AuthToast/OAuth 保现场，`2d8b153`）；Cron 时间窗调度重构 + guard 去重、快触发器 */8、看板 TTL 1800s（`90241f1`/`1b9d053`）；新增团队周报自动化 `src/reports/weekly.ts`（周一 08:16 UTC+8 快照 diff 推群 + 手动补发端点）；《NEC-HUB 模块优化评估报告 V1.0》归档；vitest 33 文件 409 用例全绿 |
+| V2.1 修订 | 2026-11-03 | 新增 FE-19 域名分发系统（§0 状态行 + §5 完整需求/验收 + §13.2 Secrets 增补）：成员自助三级/四级域名申请、泛域名 R2 应用直达（deploy_app 零配置域名）、Cloudflare DNS 自动同步（pending/retry 兜底）；代码已于 2026-10-15 上线，待 `*` 泛 DNS 记录与 CF secrets 配置后实测 |
+| V2.1 修订 | 2026-11-03 二更 | FE-19 配置收口：CF_API_TOKEN/CF_ZONE_ID secrets 写入、`*` 泛 DNS 记录生效；修复 assets 层吞根路径（wrangler.jsonc `run_worker_first: true`，否则子域名 `/` 被资产层直接返回门户 index.html 绕开 Host 路由）；应用直达/404 引导/门户无回归实测通过，剩登录态申请一单端到端实测 |
 
 ### 11.2 变更流程
 
@@ -683,6 +708,7 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 | `GITHUB_TOKEN` | `/api/repos` GitHub org 拉取 |
 | `GITEE_TOKEN` | Gitee 仓库/Skill 同步 |
 | `VERCEL_TOKEN` | `sync_vercel` 项目发现与登记 |
+| `CF_API_TOKEN` / `CF_ZONE_ID` | FE-19 域名分发：Cloudflare DNS 记录自动创建/删除（Token 权限 Zone.DNS Edit，限定 newenergycoder.club；未配置时申请存 pending，配置后重试同步） |
 
 密钥只存 wrangler secrets，不进仓库（§6）；交接时按交接 README 清单逐项移交。
 
@@ -735,3 +761,34 @@ M2 结束、工作台切换 2 周后，按对标文章建议发**飞书问卷**�
 5. **工作台切换后找不到 MES 了怎么办？** MES 保留在飞书「我的常用」；仍找不到可 10 分钟内切回原工作台（§13.4），再排查入口配置。
 6. **离职/退队队员的访问怎么处理？** 权限实时按「队员名单」表判定，移出名单后其 session 下一次请求即失效，无需手工清理。
 7. **Agent 调用 MCP 报 401/403？** 写操作必须携带 `MCP_TOKEN`；查财务表需用户角色为队长/财务的有效 token，其余角色返回 403。
+
+
+## 15. APP 互联互通补充需求（FE-20，P0）
+
+> 日期：2026-11-05
+> 状态：规范已定义，现有应用尚未按本规范逐一验收。详细技术要求、应用分级与验收清单见 [`docs/APP互联互通规范_V1.0.md`](APP互联互通规范_V1.0.md)。
+
+**用户故事**：作为队员，我从 HUB 打开任何业务 APP，都能复用同一飞书身份和权限，看到同源数据，并继续完成审批、任务或结果查询，而不是只跳到一个彼此隔离的页面。
+
+**需求描述**：
+
+- APP 上架必须声明 P（公开/只读）、I（身份打通）、B（业务打通）或 D（设备打通）等级；内置核心业务 APP 默认按 B 级验收。
+- 统一入口导航、飞书 `open_id`、服务端角色鉴权、权威数据源、稳定业务 ID 与流程待办；仅登记链接或嵌入 iframe 不算打通。
+- 公开静态页和设备预览可降级，但必须明确能力边界，不得以静态数据冒充实时连接。
+- 新应用未完成对应等级的端到端验收不得标记为“已打通”；现有应用按规范补齐验收证据。
+
+**验收标准**：
+
+1. 核心业务 APP 100% 声明权威数据源与业务 ID，并至少通过一条真实跨应用流程。
+2. 同一账号进入门户、独立页和外部应用时身份一致，适用角色的 401/403 边界经服务端验证。
+3. 门户、独立页、首页组件与相关待办读取同一记录时状态一致，缓存时效有明确说明。
+4. K1 当前只按 P 级静态预览验收；后续实时接入必须经安全只读中继，控制操作另行授权和审计。
+5. 上架材料记录集成等级、负责人、依赖 API、测试日期与验收证据。
+
+**第一阶段进展（2026-11-06：可信上架与权限基线）**：
+
+- 14 个内置应用已增加 `web/apps/<name>/integration.json`，构建与 `/api/apps` 使用同一声明；应用广场显示等级及未声明、待验收、部分验证、生产已验收、已废弃状态。
+- `deploy_app` / `register_app` 新上架和更新必须传 `integration`；`sync_vercel` 通过 `integrations` 整批预检，失败在 R2/KV 副作用前终止。历史应用保留入口但显示未声明。
+- MCP 已分离协议只读、用户身份和管理身份：匿名 `whoami` 不再误报管理员，`query_bitable` 非管理调用需有效 `user_token` 且名单匹配，财务表仍仅队长/财务或管理端可查。
+- K1 明确为 P 级公网静态预览；`task-schedule` 如实声明 `localStorage`，CLA 匿名签署与 I 级目标的冲突保留为待整改项。
+- 当前仅为第一阶段代码与自动化验证完成，FE-20 整体尚未完成。后续仍需核心应用共享登录与深链、报销/图纸评审真实跨应用闭环、任务排期数据迁移、CLA 外部身份方案及各应用生产验收；任何应用不得仅凭单测或截图升级为生产已验收。

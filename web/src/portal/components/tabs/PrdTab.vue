@@ -3,6 +3,8 @@
 // + PRD 文档库在线阅读（/docs/prd/*.md，marked 按需加载）
 import { ref, computed, onMounted } from 'vue'
 import { loadMarked } from '@shared/cdn'
+import prdDocs from '@portal/data/prd-docs.json'
+import { PRD_ROADMAP } from '@portal/data/prd-roadmap'
 
 const PRD_STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   done:     { label: '已完成', color: '#16A34A', bg: '#ECFDF5' },
@@ -22,17 +24,16 @@ function subList(c: any) {
   return Object.entries(c.subs ?? {}).map(([id, s]: [string, any]) => ({ id, ...s }))
 }
 
-// PRD 文档库：docs/ 下全部 PRD 在线阅读（原文同步自 docs/*.md → public/docs/prd/）
+// PRD 文档库：注册表与 public/docs/prd/ 静态文件由 prd-docs.test.ts 校验
 // html: true 的条目为独立 HTML 图页（marked 不适用），经 iframe 嵌入阅读器
-const PRD_DOCS = [
-  { slug: 'brand-strategy-ecosystem-v1.0', title: '品牌战略与生态用户心智占领 PRD', version: 'V1.0', date: '2026-11-06', desc: 'NEC 主品牌与常州工 NEC 统一口径：真实工程实践的开源入口，覆盖生态人群、证据体系、90 天战役、MEEU 指标与开放治理' },
-  { slug: 'team-ai-platform-v2.1',       title: '团队 AI 中台 PRD',              version: 'V2.1', date: '2026-10-16', desc: '中台总纲：M1 地基 / M2 资产与智能 / M3 个性化与自动化 / M4 业务流程域，FE-01 ~ FE-18 需求全景（上方看板的数据来源）' },
-  { slug: 'approval-notification-v1.1',  title: '审批与通知中心 PRD',            version: 'V1.1', date: '2026-10-12', desc: '报销 / 机械图纸 / 硬件采购领用 / 合规四条流程，流程即配置的 Plan B 审批引擎' },
-  { slug: 'approval-notification-v1.2',  title: '审批与通知中心 PRD（缺口补齐）', version: 'V1.2', date: '2026-10-14', desc: '台账联动、合规申请页、审批时效治理、待办 T-1 标红、邮件通道（飞书邮箱）' },
-  { slug: 'contract-signing-oa-v1.0',    title: '协议签署 OA 审批 PRD',          version: 'V1.0', date: '2026-10-14', desc: '合作协议 / 保密协议（NDA）走飞书原生 OA 审批：法务 → 运营 → 合规三级串行审核，全部通过方可签署用章' },
-  { slug: 'drawing-review-process-v1.0', title: '新增机图纸评审流程 PRD',         version: 'v1.0', date: '2026-10-14', desc: '图纸评审数字化工作流：在线提交、会议自动预约、BOM/电控/布线评估、询价与发货清单' },
-  { slug: '416mes-architecture',         title: '416MES 架构与数据流图',          version: 'V1.0', date: '2026-10-19', desc: '416MES 仓储执行系统全景：门户/中台/飞书多维表格/MES 四层架构与数据流向（宽画布图页）', html: true },
-]
+const PRD_DOCS = prdDocs as Array<{
+  slug: string
+  title: string
+  version: string
+  date: string
+  desc: string
+  html?: boolean
+}>
 
 const readerSlug = ref('')
 const readerTitle = ref('')
@@ -126,23 +127,49 @@ function closePrdDoc() {
             </div>
  <p class="text-xs mt-1 text-nec-ink">{{ c.title }}</p>
             <p class="text-[10px] text-gray-400 mt-0.5">{{ c.priority }}{{ c.note ? ' · ' + c.note : '' }}</p>
- <p v-if="subList(c).length" class="text-[10px] mt-1 text-nec-cyan">▸ {{ subList(c).length }} 个子项，悬停查看</p>
-            <!-- 子项悬停浮层 -->
-            <div v-if="subList(c).length" class="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-150 absolute left-0 right-0 top-full mt-1 z-30 bg-white rounded-lg shadow-lg border border-gray-100 p-2.5 space-y-2">
-              <div v-for="s in subList(c)" :key="s.id" class="rounded-lg p-2.5 border border-gray-100" :style="`background:${metaOf(s.status).bg}`">
-                <div class="flex items-center justify-between gap-2">
- <span class="font-bold text-[11px] text-nec-navy">{{ s.id }}</span>
-                  <span class="text-[10px] px-1.5 py-0.5 rounded text-white" :style="`background:${metaOf(s.status).color}`">{{ metaOf(s.status).label }}</span>
+            <!-- 子项展开：移动端无悬停，使用原生 details -->
+            <details v-if="subList(c).length" class="mt-2">
+              <summary class="text-[10px] cursor-pointer text-nec-cyan">▸ {{ subList(c).length }} 个子项</summary>
+              <div class="mt-1 space-y-2">
+                <div v-for="s in subList(c)" :key="s.id" class="rounded-lg p-2.5 border border-gray-100" :style="`background:${metaOf(s.status).bg}`">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="font-bold text-[11px] text-nec-navy">{{ s.id }}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded text-white" :style="`background:${metaOf(s.status).color}`">{{ metaOf(s.status).label }}</span>
+                  </div>
+                  <p class="text-[11px] mt-0.5 text-nec-ink">{{ s.title }}</p>
+                  <p class="text-[10px] text-gray-400 mt-0.5">{{ s.priority }}{{ s.note ? ' · ' + s.note : '' }}</p>
                 </div>
- <p class="text-[11px] mt-0.5 text-nec-ink">{{ s.title }}</p>
-                <p class="text-[10px] text-gray-400 mt-0.5">{{ s.priority }}{{ s.note ? ' · ' + s.note : '' }}</p>
               </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="text-xs text-gray-400 mt-3">状态由 Agent 经 NEC-MCP 的 update_prd 维护（done / partial / pending / todo）；FE-01 ~ FE-20，子项（如 FE-20 › K1）展开大项卡片查看；每次 git 提交会推送飞书群并在上方显示最近提交。</p>
+
+    <!-- 后续更新清单：内容随代码版本发布，不自动标记业务验收 -->
+    <div id="prd-next-steps" class="mt-8">
+      <div class="flex flex-wrap items-end justify-between gap-2 mb-3">
+        <h3 class="text-base font-bold">下一步更新</h3>
+        <span class="text-xs text-gray-400">按优先级排列；状态以真实验收证据为准</span>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div v-for="g in PRD_ROADMAP" :key="g.key" class="bg-white rounded-xl shadow p-5">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-[10px] px-1.5 py-0.5 rounded text-white bg-nec-navy">{{ g.key }}</span>
+            <h4 class="font-bold text-sm text-nec-navy">{{ g.title }}</h4>
+          </div>
+          <p class="text-xs text-gray-500 mb-3">{{ g.summary }}</p>
+          <div class="space-y-3">
+            <div v-for="item in g.items" :key="item.title" class="border-t border-gray-100 pt-3">
+              <p class="text-xs font-bold text-nec-ink">{{ item.title }}</p>
+              <p class="text-[11px] text-gray-500 mt-1">{{ item.detail }}</p>
+              <p class="text-[10px] text-nec-cyan mt-1">{{ item.evidence }}</p>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <p class="text-xs text-gray-400 mt-3">状态由 Agent 经 NEC-MCP 的 update_prd 维护（done / partial / pending / todo）；FE-01 ~ FE-18，子项（如 FE-04 › FE-18）悬停大项卡片查看；每次 git 提交会推送飞书群并在上方显示最近提交。</p>
 
     <!-- PRD 文档库：docs/ 下全部 PRD 在线阅读（markdown 原文静态托管于 /docs/prd/，marked 按需加载） -->
     <div class="mt-8">

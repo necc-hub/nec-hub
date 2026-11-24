@@ -76,7 +76,7 @@ src/
 - **报销提交**：`POST /api/reimburse`（multipart/form-data，需登录），门户数据看板内直接提交报销单；支持发票号字段与发票 OCR 识别（含 PDF）；`GET /api/reimburse/mine` 我的报销列表，`POST /api/reimburse/<单号>/<action>` 审批动作（approve/reject/pay）。
 - **报销 ERP 化（R-01）**：`/api/erp/reimburse/*` —— 费用项目目录 + 收款账户（D1），整单提交走 SOP 校验 → 审批引擎写底表 → D1 单据快照；附件经 `POST /api/approvals/upload` 存 R2 `receipts/`；`GET /api/erp/reimburse/manage` 为队长/财务报销单据台账（搜索/排序/分页），门户「报销」Tab 三视图。
 - **审批引擎（Plan B）**：`POST /api/approvals` 统一发起（reimburse / drawing / hardware / compliance / drawing_review / hardware_review / contract 七流程，flows:config 配置驱动，required + conditional 声明式校验 + 金额须 >0），`POST /api/approvals/<type>/<单号>/<action>` 状态机动作（全局中文状态机：approve/reject/pay/start/archive/arrive/issue/publish，幂等；评审三流程走各自英文 machine 配置），`GET /api/approvals/mine` 我的申请；状态机落多维表格底表「状态」字段，结果推飞书群机器人（多群分流 + 加签 + 重试 + `notify:failed` 留痕）；SLA 时效巡检每小时 :08 窗口 cron 自动跑（G-03）。旧 `drawing`(MECH)/`hardware`(HW) 轻审批线已废弃（由 drawing_review/hardware_review 取代，tableId 清空即停用）。
-- **PRD 看板与提交推送**：门户「PRD 看板」Tab（`GET /api/prd`，M1/M2/M3 三列卡片 + 总进度 + 最近 git 提交）；初始状态为 PRD V2.0 盘点基线（`src/prd.ts` 内 `DEFAULT_PRD_ITEMS`），之后由 Agent 调 `update_prd` 维护（覆盖存 KV `prd:status`）；`POST /api/hooks/github` 接收 GitHub push webhook（HMAC-SHA256 验签），记录最近提交到看板并推飞书群（可用 `FEISHU_BOT_WEBHOOK_PRD` 分流）。
+- **PRD 看板与提交推送**：门户「PRD 看板」Tab（`GET /api/prd`，M1~M5 五个里程碑卡片 + 下一步更新清单 + 总进度 + 最近 git 提交）；初始状态为 PRD V2.1 盘点基线（`src/prd.ts` 内 `DEFAULT_PRD_ITEMS`，含 FE-19/FE-20），之后由 Agent 调 `update_prd` 维护（覆盖存 KV `prd:status`）；`POST /api/hooks/github` 接收 GitHub push webhook（HMAC-SHA256 验签），记录最近提交到看板并推飞书群（可用 `FEISHU_BOT_WEBHOOK_PRD` 分流）。
 - **图纸评审**：`src/drawing-review/` 薄壳路由（URL 不变，评审单本体/状态机/通知由审批引擎 `drawing_review` 流程承担，单号 `DR-2026-0001` 年计数器）+ 门户「图纸评审」Tab + 静态页 `public/apps/drawing-review/`，对接飞书多维表格（评审单/纪要/整改项/BOM/事件日志）；含列表/看板双视图（`/api/drawing-review/board`）与联想功能（`/api/drawing-review/suggestions`）；PRD 与设计文档见 `docs/新增机图纸评审流程_*.md`，联想功能全套文档见 `docs/文档目录索引.md`。
 - **硬件评审**：`src/hardware-review/` 薄壳路由（单据走引擎 `hardware_review` 流程，单号 `HR-2026-0001`）+ `/api/hardware-review/*`（提交/列表/发起）+ 门户「硬件评审」Tab，MCP `config_hardware_review` 配置底表。
 - **合同审批**：`src/contract-approval/` 薄壳路由（单据走引擎 `contract` 流程，单号 `HT-2026-001` 三位年计数器，会签全员通过才生效）+ `/api/contract-approval/*`（提交/列表/发起）+ 门户「合同审批」Tab（列表优先 + 抽屉表单、批准人选择器、文件上传、编号自动生成/查重、审批进度时间线、临期告警、草稿），MCP `config_contract_approval` 配置底表。
@@ -175,7 +175,7 @@ Cron（`wrangler.jsonc` triggers，2 条 + 时间窗调度）：`*/8 * * * *` �
 | `GET /api/todos` | 审批/待办聚合（需登录） |
 | `GET /api/my-tasks` · `POST /api/my-tasks/unbind` | 我的任务（飞书 Task v2 绑定同步，KV 5 分钟缓存，`?refresh=1` 强刷）/ 解绑 |
 | `/api/season-goals/*` | 赛季目标管理（收集单提交/采纳 + 按任务自动规划；`config` 无需登录） |
-| `GET /api/prd` | 动态 PRD 看板（M1/M2/M3 需求状态 + 总进度 + 最近 git 提交；状态经 MCP `update_prd` 维护） |
+| `GET /api/prd` | 动态 PRD 看板（M1~M5 需求状态 + 子项 + 总进度 + 最近 git 提交；状态经 MCP `update_prd` 维护） |
 | `POST /api/hooks/github` | GitHub push webhook（HMAC-SHA256 验签 → 记录最近提交 → 推飞书群机器人；需 `GITHUB_WEBHOOK_SECRET`） |
 | `POST /api/approvals` | 发起审批（需登录；4 流程统一入口，flows:config 配置驱动；external / 越组 403） |
 | `POST /api/approvals/<type>/<单号>/<action>` | 审批与流程动作（approve/reject/pay/start/archive/arrive/issue/publish，幂等） |
@@ -249,7 +249,7 @@ python scripts/sync-gitee-skills.py --repo owner/name --branch SKill --dir skill
 
 ## 待办（第二/三阶段）
 
-> 完整需求、优先级与验收标准见 `docs/团队AI中台PRD_V2.1.md`（M1 地基 → M2 资产与智能 → M3 个性化与自动化）。
+> 完整需求、优先级与验收标准见 `docs/团队AI中台PRD_V2.1.md`（M1 地基 → M2 资产与智能 → M3 个性化与自动化 → M4 业务流程域 → M5 平台与应用）。
 
 - [x] 飞书 OAuth 登录 + 权限角色（FE-01：会话 Cookie + 队员名单表角色解析，财务区按角色脱敏）
 - [x] `query_bitable` 接入飞书多维表格 API（含 `config_dashboard` 配置工具与 `/api/dashboard` 聚合接口）
