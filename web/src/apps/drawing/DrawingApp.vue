@@ -35,6 +35,17 @@ watch(authed, now => { if (now) onAuthed() })
 
 <template>
   <div class="nec-drawing" :class="{ embedded }">
+    <!-- 废弃提示：已在应用广场下架，但旧书签/旧通知仍可能直达本页 -->
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-4">
+      <div class="rounded-lg p-4" style="background:#FFF1F0;border:1px solid #F5B5B0">
+        <p class="font-medium" style="color:#9B1C1C">此应用已废弃</p>
+        <p class="text-sm" style="color:#B42318">
+          机械图纸审批的旧轻审批线已下线，新评审请使用
+          <a href="/apps/drawing-review/" class="underline font-medium">新增机图纸评审</a>。
+        </p>
+      </div>
+    </div>
+
     <!-- KV Hero（embedded 模式隐藏） -->
     <header v-if="!embedded" id="app-header" class="hero">
       <div class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6 pb-8 sm:pb-12 relative">

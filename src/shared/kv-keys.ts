@@ -38,6 +38,8 @@ export const KV_KEYS = {
   appsIndex: "apps:index",
   skillsIndex: "skills:index",
   docsRegistry: "docs:registry",
+  /** 资料页种子版本号：与 docs.ts 的 DOCS_SEED_VERSION 比对，不一致时执行一次种子迁移 */
+  docsSeedVersion: "docs:seed-version",
   homeUser: (openId: string) => `home:${openId}`,
   homeGroup: (group: string) => `home:group:${group}`,
   userPrefs: (module: string, actorId: string) => `user-prefs:${module}:${actorId}`,
