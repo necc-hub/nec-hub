@@ -53,14 +53,27 @@ describe("listPortalApps", () => {
     expect(apps.find((a) => a.name === "mes-warehouse")?.source).toBe("external");
   });
 
-  it("同名 r2 应用标 shadows=true 且 url 改写为独立域名，builtin 与外链不标", async () => {
-    const env = envWith({ builtin: BUILTIN });
+  it("同名 R2 副本去重（reimburse 只留 builtin），白名单保留 shadows=true 并指向独立域名", async () => {
+    // R2 与 builtin 是同一套代码的两次发布：重复入口会让用户无法判断该点哪个，统一以仓内版为准
+    const builtin = [...BUILTIN, { name: "domains", title: "域名分发系统", desc: "子域名申请", icon: "🌐", group: "core" }];
+    const registry: AppEntry[] = [
+      ...REGISTRY,
+      { name: "domains", title: "域名分发系统（自助申请三级域名）", author: "NEC", visibility: "all", version: "1.0.0", updatedAt: "2026-11-01T00:00:00Z", url: "https://hub/apps/domains/" },
+    ];
+    const env = envWith({ builtin, registry });
     const apps = await listPortalApps(env, new Request("https://hub/api/apps"));
-    const r2Shadow = apps.find((a) => a.name === "reimburse" && a.source === "r2");
+
+    // reimburse 重复入口已移除，只保留仓内版
+    expect(apps.filter((a) => a.name === "reimburse")).toHaveLength(1);
+    expect(apps.find((a) => a.name === "reimburse")?.source).toBe("builtin");
+    expect(apps.find((a) => a.name === "reimburse")?.shadows).toBeUndefined();
+
+    // domains 在白名单内：保留独立域名入口，仍标 shadows
+    const r2Shadow = apps.find((a) => a.name === "domains" && a.source === "r2");
     expect(r2Shadow?.shadows).toBe(true);
     // /apps/<name>/ 由平台资产层服务仓内版本，R2 版只在独立域名可达，卡片链接须指向后者
-    expect(r2Shadow?.url).toBe("https://reimburse.newenergycoder.club/");
-    expect(apps.find((a) => a.name === "reimburse" && a.source === "builtin")?.shadows).toBeUndefined();
+    expect(r2Shadow?.url).toBe("https://domains.newenergycoder.club/");
+    expect(apps.find((a) => a.name === "domains" && a.source === "builtin")?.shadows).toBeUndefined();
     expect(apps.find((a) => a.name === "inventory-check")?.shadows).toBeUndefined();
   });
 

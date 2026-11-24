@@ -220,27 +220,6 @@
     }
   },
   {
-    "name": "drawing",
-    "title": "机械图纸审批",
-    "desc": "图纸提交 · 审批流转",
-    "icon": "📏",
-    "group": "standalone",
-    "integration": {
-      "level": "B",
-      "owner": "NEC 机械组",
-      "dataSource": "旧 approvals 轻审批底表",
-      "businessId": "MECH-<YYYY>-<4位序号>",
-      "apis": [
-        "/api/approvals/*"
-      ],
-      "cacheTtl": "待办 5 分钟",
-      "status": "declared",
-      "evidence": [],
-      "notes": "旧轻审批线已废弃，新增能力进入 drawing-review",
-      "deprecated": true
-    }
-  },
-  {
     "name": "season-goals",
     "title": "赛季目标管理",
     "desc": "目标 · 关键结果 · 完成度跟踪",

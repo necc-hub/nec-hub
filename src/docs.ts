@@ -1,5 +1,10 @@
 /**
- * 资料页（KV 注册表 + 首访种子数据）
+ * 资料页（KV 注册表 + 种子数据 + 种子版本迁移）
+ *
+ * 注意：资料页读的是 KV `docs:registry`，不是本文件的 SEED_DOCS。
+ * 改 SEED_DOCS 只会影响「首次访问且 KV 为空」的场景；已上线的资料必须靠
+ * DOCS_SEED_VERSION 递增触发迁移（见 migrateSeedDocs），或走 MCP publish_doc / remove_docs。
+ * 这也是历史上「代码改了 VI 手册 V1.1、线上仍指向 V1.0 死链」的根因。
  */
 
 import { readIndex } from "./hosting";
@@ -8,6 +13,12 @@ import { resolveSession } from "./shared/session";
 
 /** 资料页注册表 KV key */
 export const DOCS_REGISTRY_KEY = KV_KEYS.docsRegistry;
+
+/**
+ * 种子版本号：★ 修改 SEED_DOCS / RETIRED_SEED_IDS 后必须递增 ★
+ * 线上 KV 里记录的版本与之不同时，buildDocs 会执行一次迁移（更新既有种子、补新增、删已下线）。
+ */
+export const DOCS_SEED_VERSION = 2;
 
 /** 资料页条目（KV key: docs:registry，由 MCP publish_doc 写入） */
 export interface DocEntry {
@@ -24,8 +35,14 @@ export interface DocEntry {
   source: string;
 }
 
-/** 资料页初始种子数据（首次访问且 KV 为空时写入） */
-const SEED_DOCS: DocEntry[] = [
+/**
+ * 资料页种子数据。
+ *
+ * 原则：只放**链接可用**的条目。「即将上线」的空占位（技术方案报告模板、会议纪要模板、
+ * 换届交接清单、三组入门教程）没有内容也没有维护人，已从种子移除，见 RETIRED_SEED_IDS。
+ * 新资料请用 MCP publish_doc 发布，或补进这里并递增 DOCS_SEED_VERSION。
+ */
+const SEED_DOCS: ReadonlyArray<Omit<DocEntry, "updatedAt">> = [
   {
     id: "nec-brand-center",
     title: "NEC 品牌主视觉中心",
@@ -34,7 +51,6 @@ const SEED_DOCS: DocEntry[] = [
     url: "/brand/",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
   {
@@ -45,7 +61,6 @@ const SEED_DOCS: DocEntry[] = [
     url: "/brand/NEC-VI-Manual_V1.1.md",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
   {
@@ -56,29 +71,6 @@ const SEED_DOCS: DocEntry[] = [
     url: "/brand/NEC-PPT-Template_V1.0.pptx",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
-    source: "hub",
-  },
-  {
-    id: "tech-report-template",
-    title: "技术方案报告模板",
-    description: "项目立项/技术评审/成果总结通用报告结构（即将上线）",
-    category: "template",
-    url: "",
-    visibility: "all",
-    maintainer: "待认领",
-    updatedAt: new Date().toISOString(),
-    source: "hub",
-  },
-  {
-    id: "meeting-minutes-template",
-    title: "会议纪要模板",
-    description: "例会/评审会标准纪要结构，含行动项追踪（即将上线）",
-    category: "template",
-    url: "",
-    visibility: "all",
-    maintainer: "待认领",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
   {
@@ -86,10 +78,10 @@ const SEED_DOCS: DocEntry[] = [
     title: "财务报销流程",
     description: "线上报销助手 + 材料清单 + 审批节点说明",
     category: "sop",
-    url: "/#tab-dashboard",
+    // 旧值 /#tab-dashboard 会被 hash 兼容层落到「数据看板」，与报销流程语义错位；直达报销 Tab
+    url: "/#/reimburse",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
   {
@@ -100,7 +92,6 @@ const SEED_DOCS: DocEntry[] = [
     url: "/docs/多维表数据规范_组长维护手册.md",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
   {
@@ -111,7 +102,6 @@ const SEED_DOCS: DocEntry[] = [
     url: "/docs/数据看板配置手册.md",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
   {
@@ -122,68 +112,70 @@ const SEED_DOCS: DocEntry[] = [
     url: "https://mes.newenergycoder.club/home.html",
     visibility: "all",
     maintainer: "NEC AI 中台",
-    updatedAt: new Date().toISOString(),
-    source: "hub",
-  },
-  {
-    id: "handover-checklist",
-    title: "换届交接清单",
-    description: "中台资产/账号/文档/权限交接 checklist（即将上线）",
-    category: "sop",
-    url: "",
-    visibility: "all",
-    maintainer: "待认领",
-    updatedAt: new Date().toISOString(),
-    source: "hub",
-  },
-  {
-    id: "mech-onboarding",
-    title: "机械组入门教程",
-    description: "机械组常用工具链、设计规范、常用元件手册（即将上线）",
-    category: "training",
-    url: "",
-    visibility: "all",
-    maintainer: "待认领",
-    updatedAt: new Date().toISOString(),
-    source: "hub",
-  },
-  {
-    id: "elec-onboarding",
-    title: "电控组入门教程",
-    description: "电路设计、嵌入式开发、调试工具使用指南（即将上线）",
-    category: "training",
-    url: "",
-    visibility: "all",
-    maintainer: "待认领",
-    updatedAt: new Date().toISOString(),
-    source: "hub",
-  },
-  {
-    id: "vision-onboarding",
-    title: "视觉组入门教程",
-    description: "OpenCV/深度学习/相机标定/部署流程（即将上线）",
-    category: "training",
-    url: "",
-    visibility: "all",
-    maintainer: "待认领",
-    updatedAt: new Date().toISOString(),
     source: "hub",
   },
 ];
 
+/**
+ * 已从种子下线的条目：迁移时删除。只列**种子自带**的 id，不动成员通过 publish_doc 发布的资料。
+ * v2 下线的 6 条均为空 url 的「即将上线」占位。
+ */
+export const RETIRED_SEED_IDS = [
+  "tech-report-template",
+  "meeting-minutes-template",
+  "handover-checklist",
+  "mech-onboarding",
+  "elec-onboarding",
+  "vision-onboarding",
+] as const;
+
+function seedEntries(now: string): DocEntry[] {
+  return SEED_DOCS.map((d) => ({ ...d, updatedAt: now }));
+}
+
+/**
+ * 把线上 KV 迁移到当前种子版本：
+ * - 删除 RETIRED_SEED_IDS 中的条目；
+ * - 按 id 就地更新/新增 SEED_DOCS（链接、标题、描述、维护人以代码为准）；
+ * - 成员自行发布的其它资料原样保留；
+ * - 历史 example.feishu.cn 占位链接置空。
+ */
+export function migrateSeedDocs(docs: DocEntry[], now = new Date().toISOString()): DocEntry[] {
+  const retired = new Set<string>(RETIRED_SEED_IDS);
+  const kept = docs
+    .filter((d) => !retired.has(d.id))
+    .map((d) => (d.url.includes("example.feishu.cn") ? { ...d, url: "" } : d));
+
+  for (const seed of seedEntries(now)) {
+    const i = kept.findIndex((d) => d.id === seed.id);
+    if (i >= 0) kept[i] = { ...seed, updatedAt: now };
+    else kept.push(seed);
+  }
+  return kept;
+}
+
 export async function buildDocs(env: Env, request: Request, ctx?: ExecutionContext): Promise<unknown> {
   let docs = await readIndex<DocEntry>(env, DOCS_REGISTRY_KEY);
+  const storedVersion = await env.REGISTRY.get(KV_KEYS.docsSeedVersion);
+
   if (docs.length === 0) {
-    docs = SEED_DOCS;
+    docs = seedEntries(new Date().toISOString());
     await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+    await env.REGISTRY.put(KV_KEYS.docsSeedVersion, String(DOCS_SEED_VERSION));
+  } else if (storedVersion !== String(DOCS_SEED_VERSION)) {
+    // 种子升级：修复死链 / 删除空占位 / 补新增资料（一次性，版本号对齐后不再执行）
+    docs = migrateSeedDocs(docs);
+    await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
+    await env.REGISTRY.put(KV_KEYS.docsSeedVersion, String(DOCS_SEED_VERSION));
   } else {
-    // 历史种子里的 example.feishu.cn 占位链接 → 置空 url，前端展示「即将上线」
+    // 版本已对齐：只兜底清理历史 example.feishu.cn 占位，不重写种子
     const cleaned = docs.map((d) => (d.url.includes("example.feishu.cn") ? { ...d, url: "" } : d));
     if (cleaned.some((d, i) => d.url !== docs[i].url)) {
       docs = cleaned;
       await env.REGISTRY.put(DOCS_REGISTRY_KEY, JSON.stringify(docs));
     }
   }
+
   const session = await resolveSession(env, request, ctx);
   if (!session) {
     return docs.filter((d) => d.visibility === "all");

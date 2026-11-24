@@ -4,8 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { validateAppIntegration } from '../src/shared/app-integration'
+import { isCatalogEligible } from '../src/shared/app-catalog'
 import { HUB_ORIGIN, PUBLIC_APP_SEO } from '../src/shared/discovery'
+import { validateAppIntegration } from '../src/shared/app-integration'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 
@@ -22,7 +23,8 @@ function cleanPortalAssets() {
 
 // 仓内官方子应用的展示元数据（原 AppsTab 硬编码迁移至此，构建期下发 manifest，应用广场不再手写入口）
 // group: core=核心流程 standalone=独立应用；新应用未登记时按 <title> 兜底、归 standalone
-const BUILTIN_APP_META: Record<string, { group: 'core' | 'standalone'; title: string; desc: string; icon: string }> = {
+// deprecated: true 的应用（当前为 drawing，已被 drawing-review 取代）不上架：源码与 /apps/<name>/ 保留可访问
+const BUILTIN_APP_META: Record<string, { group: 'core' | 'standalone'; title: string; desc: string; icon: string; deprecated?: boolean }> = {
   'drawing-review': { group: 'core', title: '新增机图纸评审', desc: '提交 · 评审 · BOM · 排期 · 采购', icon: '📐' },
   'hardware-review': { group: 'core', title: '硬件评审流程', desc: '选型 · 评审 · 立项 · 归档', icon: '🔧' },
   'mech-review-6014': { group: 'core', title: '6014 电机机械评审', desc: '评审纪要 · 转接板草图 · DXF/CSV', icon: '⚙️' },
@@ -32,7 +34,7 @@ const BUILTIN_APP_META: Record<string, { group: 'core' | 'standalone'; title: st
   reimburse: { group: 'standalone', title: '报销助手', desc: '费用报销单 · 发票附件 · 提交审批', icon: '💰' },
   compliance: { group: 'standalone', title: '合规申请', desc: '合规事项提交 · 审批 · 归档', icon: '🛡️' },
   'cla-sign': { group: 'standalone', title: 'CLA 协议签署', desc: '开源贡献协议 · 签署 · PDF 证书', icon: '✍️' },
-  drawing: { group: 'standalone', title: '机械图纸审批', desc: '图纸提交 · 审批流转', icon: '📏' },
+  drawing: { group: 'standalone', title: '机械图纸审批（已废弃）', desc: '旧轻审批线已下线，请使用「新增机图纸评审」', icon: '📏', deprecated: true },
   'season-goals': { group: 'standalone', title: '赛季目标管理', desc: '目标 · 关键结果 · 完成度跟踪', icon: '🎯' },
   'task-schedule': { group: 'standalone', title: '任务排期', desc: '任务计划 · 排期甘特 · 进度', icon: '🗓️' },
   'ress-solution': { group: 'standalone', title: 'StarCharge RESS 场景方案', desc: '场景视频 · 产品包 BOM · 配置导出', icon: '🔋' },
@@ -48,15 +50,17 @@ function builtinManifestEntries() {
     return fs.statSync(dir).isDirectory() && fs.existsSync(path.join(dir, 'index.html'))
   })
   const ordered = [...BUILTIN_APP_ORDER.filter((n) => names.includes(n)), ...names.filter((n) => !BUILTIN_APP_META[n]).sort()]
-  return ordered.map((name) => {
+  return ordered.flatMap((name) => {
     const meta = BUILTIN_APP_META[name]
+    const integration = validateAppIntegration(JSON.parse(fs.readFileSync(path.join(appsDir, name, 'integration.json'), 'utf8')), name)
+    // deprecated 双保险：integration.json 与 META 任一处标记即不上架
+    if (!isCatalogEligible({ name, integration }) || meta?.deprecated) return []
     let title = name
     if (!meta) {
       const html = fs.readFileSync(path.join(appsDir, name, 'index.html'), 'utf-8')
       title = html.match(/<title>([^<]*)<\/title>/)?.[1]?.replace(/\s*·\s*NEC HUB\s*$/, '').trim() || name
     }
-    const integration = validateAppIntegration(JSON.parse(fs.readFileSync(path.join(appsDir, name, 'integration.json'), 'utf8')), name)
-    return { name, title: meta?.title ?? title, desc: meta?.desc ?? '', icon: meta?.icon ?? '🧩', group: meta?.group ?? 'standalone', integration }
+    return [{ name, title: meta?.title ?? title, desc: meta?.desc ?? '', icon: meta?.icon ?? '🧩', group: meta?.group ?? 'standalone', integration }]
   })
 }
 
