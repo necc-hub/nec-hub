@@ -71,8 +71,9 @@ describe("portal mobile and accessibility contracts", () => {
     expect(hero).toContain("auth.phase !== 'ready'");
     expect(hero).toContain("return heroCompact();");
     expect(hero).toContain("portal-hero__stage");
-    expect(hero).toContain("switchTab('my-tasks')");
+    expect(hero).not.toContain("switchTab('my-tasks')");
     expect(hero).toContain("switchTab('apps')");
+    expect(hero).toContain("switchTab('docs')");
     expect(hero).toContain("aria-hidden=\"true\"");
   });
 });

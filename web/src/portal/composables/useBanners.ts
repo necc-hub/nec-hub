@@ -99,7 +99,7 @@ function todoBarSig(d: any): string {
 }
 
 export async function loadTodos() {
-  if (!auth.me.authenticated) { todoBar.data = null; todoBar.hidden = false; return }
+  if (!auth.me.authenticated) { todoBar.data = null; todoBar.hidden = false; todoBar.expanded = false; return }
   try {
     const resp = await fetch('/api/todos')
     if (!resp.ok) { todoBar.data = null; todoBar.hidden = false; return }

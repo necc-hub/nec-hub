@@ -115,7 +115,7 @@ function goDashboard() {
                   <li class="flex justify-between gap-2"><span>NEC-MCP 端点</span><span v-html="mcpLine"></span></li>
                   <li class="flex justify-between gap-2"><span>数据健康</span><span v-html="validateLine"></span></li>
                 </ul>
-                <button @click="goDashboard" class="mt-3 min-h-11 text-xs hover:underline text-nec-navy font-bold">数据健康详情 →</button>
+                <button v-if="auth.me.authenticated" @click="goDashboard" class="mt-3 min-h-11 text-xs hover:underline text-nec-navy font-bold">数据健康详情 →</button>
               </template>
             </div>
           </div>
@@ -130,8 +130,8 @@ function goDashboard() {
           <p class="portal-hero__cn">为黎明而造</p>
           <p class="portal-hero__lede">把任务、工具与创造，放在同一张工作台上。</p>
           <div class="portal-hero__actions">
-            <button type="button" class="portal-button portal-button--primary" @click="switchTab('my-tasks')">进入我的任务 <span aria-hidden="true">→</span></button>
-            <button type="button" class="portal-button portal-button--secondary" @click="switchTab('apps')">浏览应用目录</button>
+            <button type="button" class="portal-button portal-button--primary" @click="switchTab('apps')">浏览应用目录 <span aria-hidden="true">→</span></button>
+            <button type="button" class="portal-button portal-button--secondary" @click="switchTab('docs')">查看公开资料</button>
           </div>
           <a class="portal-hero__warehouse" href="https://mes.newenergycoder.club/home.html" target="_blank" rel="noopener noreferrer">NEC 仓库作业台 · 找物品 / 扫标签 / 办工单 <span aria-hidden="true">↗</span></a>
         </div>
