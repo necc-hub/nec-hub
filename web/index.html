@@ -3,13 +3,48 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>NEC 团队 AI 中台</title>
+<title>NEC Hub｜常州工 NEC 团队协作与应用入口</title>
+<meta name="description" content="NEC Hub 是常州工 NEC 的团队协作与应用入口：聚合公开项目、Skill、品牌资产与开源仓库。了解机器人 × 嵌入式 × 新能源的开源工程实践社区。" />
 <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
 <link rel="stylesheet" href="/brand/nec-tokens.css" />
 <link rel="stylesheet" href="/src/shared/tailwind.css" />
+<style>
+  .seo-fallback { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; color: var(--nec-ink); }
+  .seo-fallback h1 { color: var(--nec-navy); font-size: clamp(28px, 5vw, 44px); line-height: 1.25; }
+  .seo-fallback h2 { color: var(--nec-navy); font-size: 20px; margin-top: 28px; }
+  .seo-fallback p, .seo-fallback li { line-height: 1.85; }
+  .seo-fallback a { color: #087ea4; }
+  .seo-fallback nav { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 18px 0; }
+  .seo-fallback .boundary { border-left: 4px solid var(--nec-cyan); padding-left: 14px; color: var(--nec-gray); }
+</style>
 </head>
 <body class="min-h-screen bg-[#FAF7F2] text-nec-ink">
-<div id="app"></div>
+<div id="app">
+  <main class="seo-fallback">
+    <p>常州工 NEC · NEW ENERGY CODER</p>
+    <h1>NEC Hub：真实工程实践的团队协作入口</h1>
+    <p>常州工 NEC（New Energy Coder）是发起于常州工学院、面向学生与青年工程师的开源工程实践社区，聚焦机器人 × 嵌入式 × 新能源。NEC Hub 聚合团队应用、Skill、文档与开源仓库，并以飞书身份与权限保护内部工作区。</p>
+    <nav aria-label="公开入口">
+      <a href="/about/">关于 NEC 与 NEC Hub</a>
+      <a href="/apps/k1/">K1 Dashboard</a>
+      <a href="/apps/ress-solution/">RESS 场景方案</a>
+      <a href="/apps/mech-review-6014/">6014 机械评审</a>
+      <a href="/brand/">品牌主视觉</a>
+      <a href="/llms.txt">AI 可读摘要</a>
+    </nav>
+    <h2>公开项目与资料</h2>
+    <ul>
+      <li><a href="/apps/k1/">K1 Dashboard</a>：创想 K1 系列的只读设备面板预览。</li>
+      <li><a href="/apps/ress-solution/">StarCharge RESS 场景方案</a>：场景视频、产品包 BOM 与本地配置导出。</li>
+      <li><a href="/apps/mech-review-6014/">6014 电机机械评审纪要</a>：评审纪要、草图与 DXF/CSV。</li>
+      <li><a href="/apps/scoring/">NEC 评分看板</a>：静态赛事评分与排名资料。</li>
+    </ul>
+    <h2>官方入口</h2>
+    <p><a href="https://www.newenergycoder.club/">NEC 官网</a> · <a href="https://docs.newenergycoder.club/">NEC Docs</a> · <a href="https://github.com/necc-hub">GitHub 组织</a> · <a href="https://gitee.com/darrenpig/new_energy_coder_club">社区 Gitee 仓库</a></p>
+    <p class="boundary">报销、合同、审批、成员、待办、财务看板和内部评审数据属于登录后的内部工作区，不是公开数据源。</p>
+    <noscript><p>NEC Hub 的完整交互需要启用 JavaScript；以上公开入口可直接访问。</p></noscript>
+  </main>
+</div>
 <script type="module" src="/src/portal/main.ts"></script>
 </body>
 </html>

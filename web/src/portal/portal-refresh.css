@@ -124,7 +124,8 @@
 .portal-hero .hero-title { max-width: 48rem; font-size: clamp(3.25rem, 6.3vw, 5.5rem); letter-spacing: -.045em; text-wrap: balance; }
 .portal-hero__cn { margin-top: 1rem; color: var(--nec-navy); font-size: 1rem; font-weight: 800; letter-spacing: .3em; }
 .portal-hero__lede { max-width: 32rem; margin-top: 1rem; color: var(--nec-gray); font-size: 1rem; line-height: 1.8; }
-.portal-hero__actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.75rem; }
+.portal-hero__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1.75rem; }
+.portal-hero__about { display: inline-flex; min-height: 2.75rem; align-items: center; color: var(--nec-navy); font-size: .875rem; font-weight: 700; text-decoration: underline; text-underline-offset: .25rem; }
 .portal-hero__warehouse { display: inline-flex; min-height: 2.75rem; align-items: center; margin-top: .75rem; color: var(--nec-gray); font-size: .8125rem; text-decoration: underline; text-underline-offset: .25rem; }
 .portal-hero__object { position: relative; min-width: 0; }
 .portal-hero__object svg { display: block; width: 100%; height: auto; }

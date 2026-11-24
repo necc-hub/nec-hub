@@ -2,6 +2,9 @@
  * NEC 团队 AI 中台 — 单体 Worker
  * 路由：
  *   GET  /                → 门户静态页（Assets）
+ *   GET  /robots.txt      → 爬虫规则（仅规范 Hub 域名允许收录；公开内容与内部边界见 discovery.ts）
+ *   GET  /sitemap.xml     → 公开页面站点地图（about / brand / 四个公开应用）
+ *   GET  /llms.txt        → AI 搜索 / Agent 可读摘要（public/llms.txt；完整版 llms-full.txt）
  *   GET  /api/health      → 健康检查
  *   GET  /api/apps        → 应用广场注册表（KV）
  *   GET  /api/skills      → Skill 中心注册表（KV）
@@ -60,6 +63,7 @@ import { handleFeishuAuth } from "./auth/feishu-auth";
 import { handleLogout, handleLogoutAll, handleWhoami } from "./auth/handlers";
 import { handlePasswordLogin } from "./auth/password";
 import { buildDashboard } from "./dashboard";
+import { handleDiscovery, withDiscoveryHeaders } from "./discovery";
 import { buildDocs } from "./docs";
 import { handleGetHome, handleGetHomeDefaults, handleResetHome, handleSetHome } from "./home/handlers";
 import { listPortalApps, readIndex, serveApp, serveSkill, type SkillEntry } from "./hosting";
@@ -73,7 +77,7 @@ import { KV_KEYS } from "./shared/kv-keys";
 import { handleInvalidateTodos, handleTodos } from "./todos";
 import { handleValidateQuery, handleValidateReport, handleValidateRun } from "./validation/handlers";
 
-export default {
+const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     console.log(`[nec-hub] ${request.method} ${url.pathname}`);
@@ -81,6 +85,8 @@ export default {
       // 泛域名应用直达：<app>.<zone> → R2 apps/<app>/（deploy_app 零配置获得独立三级域名；详见 domains/wildcard.ts）
       const subRes = await import("./domains/wildcard").then((m) => m.handleAppSubdomain(request, env, ctx));
       if (subRes) return subRes;
+      const discovery = handleDiscovery(request);
+      if (discovery) return discovery;
       if (url.pathname === "/mcp" && request.method === "POST") {
         return await handleMcp(request, env);
       }
@@ -261,5 +267,12 @@ export default {
     }
   },
 
+  scheduled,
+};
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    return withDiscoveryHeaders(await worker.fetch(request, env, ctx), request);
+  },
   scheduled,
 } satisfies ExportedHandler<Env>;

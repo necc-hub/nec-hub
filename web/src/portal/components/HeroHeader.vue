@@ -125,13 +125,14 @@ function goDashboard() {
 
       <div id="hero-full" class="portal-hero__stage">
         <div class="portal-hero__copy">
-          <p class="portal-hero__eyebrow mono">NEC HUB · TEAM AI WORKSPACE · 2026</p>
+          <p class="portal-hero__eyebrow mono">常州工 NEC · 开源工程实践社区 · NEC HUB</p>
           <h1 class="hero-title">BUILT <span class="to">TO</span> DAWN</h1>
           <p class="portal-hero__cn">为黎明而造</p>
-          <p class="portal-hero__lede">把任务、工具与创造，放在同一张工作台上。</p>
+          <p class="portal-hero__lede">聚合真实项目、团队应用、Skill 与开源仓库，把任务、评审与交付沉淀为可复用工程资产。</p>
           <div class="portal-hero__actions">
             <button type="button" class="portal-button portal-button--primary" @click="switchTab('my-tasks')">进入我的任务 <span aria-hidden="true">→</span></button>
             <button type="button" class="portal-button portal-button--secondary" @click="switchTab('apps')">浏览应用目录</button>
+            <a class="portal-hero__about" href="/about/">了解 NEC 与公开边界 →</a>
           </div>
           <a class="portal-hero__warehouse" href="https://mes.newenergycoder.club/home.html" target="_blank" rel="noopener noreferrer">NEC 仓库作业台 · 找物品 / 扫标签 / 办工单 <span aria-hidden="true">↗</span></a>
         </div>

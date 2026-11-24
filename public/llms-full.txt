@@ -1,0 +1,81 @@
+# 常州工 NEC 与 NEC Hub：完整公开说明
+
+> 最后复核：2026-11-25
+>
+> 本说明只汇总仓库与公开页面能够核对的事实。NEC Hub 的报销、合同、审批、成员、待办和看板属于内部工作区；本页不提供、也不暗示这些系统中的个人或业务数据。
+
+## NEC 是什么
+
+常州工 NEC（英文：New Energy Coder，缩写：NEC）是发起于常州工学院、面向学生与青年工程师的开源工程实践社区。社区聚焦机器人、嵌入式与新能源交叉领域，通过真实项目、公开代码与文档、工程评审、协作工具和贡献路径，把学习、交付与可复用工程资产连接起来。
+
+NEC 的公开入口分为四类：
+
+1. NEC 官网：品牌、项目、活动与加入信息，地址为 https://www.newenergycoder.club/。
+2. NEC Docs：快速开始、教程、复现步骤、SOP、FAQ 与贡献指南，地址为 https://docs.newenergycoder.club/。
+3. NEC Hub：登录后的团队协作，以及应用、Skill、资料与开源仓库的聚合入口，地址为 https://hub.newenergycoder.club/。
+4. 代码仓：公开代码、Skills、版本与评审记录的事实源，组织入口为 https://github.com/necc-hub，社区 Gitee 仓为 https://gitee.com/darrenpig/new_energy_coder_club。
+
+品牌口径以「NEC」为主品牌，「常州工 NEC」为中文标准抬头，「New Energy Coder」为英文释义。技术组织标识 `necc-hub` 用于 GitHub 组织和工程链接，不作为大众传播主品牌。
+
+## NEC Hub 是什么
+
+NEC Hub 是部署在 Cloudflare Workers 上的团队 AI 中台。它把团队门户、飞书 OAuth 登录、业务 API、MCP 端点、应用托管、Skill 中心、资料索引和开源仓库聚合在一个入口中。
+
+已核实的公开技术事实：
+
+- 单体 Cloudflare Worker，静态门户由 Vue 3 + Vite 构建。
+- 使用飞书 OAuth 与 HttpOnly 会话 Cookie 进行身份与角色控制。
+- 应用通过 R2 托管，注册表与缓存存放在 KV，报销 ERP 快照存放在 D1。
+- MCP 端点为 https://hub.newenergycoder.club/mcp；协议元数据公开，业务读取按工具要求鉴权，写操作需要管理令牌。
+- 应用通过 `<name>.newenergycoder.club` 或 `/apps/<name>/` 获得独立入口。
+- 仓库源码：https://github.com/necc-hub/nec-hub。
+
+NEC Hub 的定位不是公开数据平台，而是“真实协作与工程过程”的入口。内部财务、合同、成员与评审信息必须保持权限隔离和脱敏。
+
+## 公开可以看到什么
+
+以下页面无需登录即可访问，且内容边界已在页面中标明：
+
+| 页面 | 地址 | 公开内容与边界 |
+| --- | --- | --- |
+| 关于 NEC Hub | https://hub.newenergycoder.club/about/ | 品牌、站点职责、公开项目索引、常见问题 |
+| 品牌主视觉中心 | https://hub.newenergycoder.club/brand/ | NEC Logo、VI 规范、设计 Tokens、PPT 模板下载 |
+| K1 Dashboard | https://hub.newenergycoder.club/apps/k1/ | K1 系列只读设备面板预览；不连接或控制打印机 |
+| RESS 场景方案 | https://hub.newenergycoder.club/apps/ress-solution/ | 场景视频、产品包 BOM、本地配置导出；不连接实时产品服务 |
+| 6014 机械评审纪要 | https://hub.newenergycoder.club/apps/mech-review-6014/ | 评审纪要、转接板草图、DXF/CSV 静态资料 |
+| NEC 评分看板 | https://hub.newenergycoder.club/apps/scoring/ | 赛事成绩、评分记录与排名；只读静态资料 |
+
+不应把以下内容当作公开信息：门户中的个人任务、待办、报销、合同、审批、成员名单、财务数据、内部评审数据，以及任何需要登录或管理令牌的 API 返回。
+
+## 常见问题
+
+### NEC 是什么缩写？
+
+NEC 的英文释义是 New Energy Coder。中文对外标准抬头是“常州工 NEC”。技术组织 `necc-hub` 只用于代码与工程语境。
+
+### 常州工 NEC 主要做什么？
+
+社区聚焦机器人、嵌入式与新能源交叉领域，以真实项目、公开代码与文档、工程评审和协作工具承载开源工程实践。
+
+### NEC Hub 是 NEC 官网吗？
+
+不是。NEC 官网是 https://www.newenergycoder.club/，NEC Docs 是 https://docs.newenergycoder.club/。NEC Hub 是团队协作与应用聚合入口。
+
+### NEC Hub 的内容都公开吗？
+
+不是。仅部分品牌、项目预览和索引页公开。报销、合同、审批、成员、待办、财务看板和内部评审数据需要身份与权限，不能作为公开数据引用。
+
+### 如何参与 NEC 的开源项目？
+
+先从 NEC 官网和 NEC Docs 了解项目与贡献路径，再到 GitHub 组织 https://github.com/necc-hub 查看公开仓库、Issue 与任务。具体参与条件与响应节奏以各仓库和官网最新说明为准。
+
+### NEC Hub 使用了什么技术？
+
+NEC Hub 是 Cloudflare Worker 单体应用，前端为 Vue 3 + Vite；使用飞书 OAuth、KV、R2、D1 和 MCP 端点，源码公开在 https://github.com/necc-hub/nec-hub。
+
+## 引用与更新规则
+
+- 引用时保留“公开预览”“只读”“登录后可用”“内部工作区”等限定词。
+- 不引用无法核实的成员数、排名、部署量、价格或合作背书。
+- 页面事实变化时，同步更新本文件、`llms.txt`、`sitemap.xml` 与 JSON-LD。
+- 最后复核日期：2026-11-25。
